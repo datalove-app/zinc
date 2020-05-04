@@ -1,8 +1,6 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::{ConstraintSystem, SynthesisError};
 use crate::core::{InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::Engine;
+use bellman::{ConstraintSystem, SynthesisError};
 use num_bigint::ToBigInt;
 use num_traits::Signed;
 use zinc_bytecode::data::values::Value;

@@ -1,6 +1,5 @@
-use bellman::ConstraintSystem;
 use ff::Field;
-use franklin_crypto::bellman::{Index, LinearCombination, SynthesisError, Variable};
+use bellman::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 use pairing::Engine;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;

@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 
-use bellman::groth16;
+use bellman::{Circuit, ConstraintSystem, SynthesisError};
+use bellman::groth16::{self, Parameters, Proof, VerifyingKey};
 use bellman::pairing::bn256::Bn256;
-use franklin_crypto::bellman::groth16::{Parameters, Proof, VerifyingKey};
-use franklin_crypto::bellman::{Circuit, ConstraintSystem, SynthesisError};
 use num_bigint::BigInt;
 use rand::ThreadRng;
 

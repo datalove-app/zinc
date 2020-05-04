@@ -1,10 +1,8 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::stdlib::crypto::VerifySchnorrSignature;
 use crate::{stdlib, Engine};
+use bellman::ConstraintSystem;
 use zinc_bytecode::builtins::BuiltinIdentifier;
 use zinc_bytecode::instructions::CallBuiltin;
 

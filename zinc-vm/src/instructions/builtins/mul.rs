@@ -1,12 +1,10 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::auto_const;
 use crate::core::{Cell, InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{ScalarType, ScalarTypeExpectation};
 use crate::{gadgets, Engine};
+use bellman::ConstraintSystem;
 use zinc_bytecode::instructions::Mul;
 
 impl<E, CS> VMInstruction<E, CS> for Mul

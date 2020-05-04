@@ -1,7 +1,7 @@
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant};
 use crate::{Engine, Result};
 use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use franklin_crypto::circuit::num::AllocatedNum;
 
 pub fn conditional_select<E, CS>(

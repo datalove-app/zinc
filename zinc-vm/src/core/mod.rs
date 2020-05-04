@@ -11,7 +11,7 @@ use crate::errors::MalformedBytecode;
 use crate::gadgets::{Gadgets, Scalar, ScalarType};
 use crate::Engine;
 use colored::Colorize;
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use num_bigint::{BigInt, ToBigInt};
 use std::marker::PhantomData;
 use zinc_bytecode::data::types as object_types;

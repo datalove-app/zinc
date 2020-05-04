@@ -1,5 +1,5 @@
 use crate::{Error, IoToError};
-use franklin_crypto::bellman::groth16::Parameters;
+use bellman::groth16::Parameters;
 use pairing::bn256::Bn256;
 use std::fs;
 use std::path::PathBuf;

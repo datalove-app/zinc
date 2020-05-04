@@ -1,7 +1,7 @@
 use crate::core::{Cell, InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use zinc_bytecode::LoadByIndexGlobal;
 
 impl<E, CS> VMInstruction<E, CS> for LoadByIndexGlobal

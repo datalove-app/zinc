@@ -2,7 +2,7 @@ use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{Scalar, ScalarType};
 use crate::{gadgets, Engine, Result};
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use zinc_bytecode::scalar::IntegerType;
 
 pub fn abs<E, CS>(cs: CS, scalar: &Scalar<E>) -> Result<Scalar<E>>

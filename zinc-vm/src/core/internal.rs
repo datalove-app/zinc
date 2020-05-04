@@ -5,7 +5,7 @@ use crate::stdlib::NativeFunction;
 use crate::Result;
 use crate::RuntimeError;
 use crate::{gadgets, Engine};
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 
 /// This is an internal interface to virtual machine used by instructions.
 pub trait InternalVM<E: Engine> {

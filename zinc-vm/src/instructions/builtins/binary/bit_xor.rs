@@ -3,7 +3,7 @@ use crate::{Engine, Result, RuntimeError};
 
 use crate::gadgets::utils::{bigint_to_fr, fr_to_bigint};
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use zinc_bytecode::instructions::BitXor;
 
 impl<E, CS> VMInstruction<E, CS> for BitXor

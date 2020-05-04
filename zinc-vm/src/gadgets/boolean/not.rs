@@ -2,7 +2,7 @@ use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
 use crate::{Engine, Result};
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use franklin_crypto::circuit::expression::Expression;
 
 pub fn not<E, CS>(cs: CS, scalar: &Scalar<E>) -> Result<Scalar<E>>

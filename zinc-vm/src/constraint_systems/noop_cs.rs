@@ -1,4 +1,4 @@
-use franklin_crypto::bellman::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
+use bellman::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
 
 use crate::Engine;
 

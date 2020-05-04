@@ -4,7 +4,7 @@ use crate::gadgets;
 use crate::gadgets::Scalar;
 use crate::Engine;
 use crate::RuntimeError;
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use std::fmt;
 
 #[derive(Debug)]

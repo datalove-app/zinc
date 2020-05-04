@@ -1,5 +1,5 @@
 use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use franklin_crypto::circuit::expression::Expression;
 use num_bigint::BigInt;
 

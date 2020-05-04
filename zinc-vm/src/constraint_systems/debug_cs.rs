@@ -1,7 +1,5 @@
 use ff::Field;
-use franklin_crypto::bellman::{
-    ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
-};
+use bellman::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable, };
 
 use crate::Engine;
 

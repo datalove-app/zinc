@@ -1,6 +1,6 @@
 use crate::{Error, IoToError};
 use colored::Colorize;
-use franklin_crypto::bellman::groth16::{Proof, VerifyingKey};
+use bellman::groth16::{Proof, VerifyingKey};
 use pairing::bn256::Bn256;
 use std::fs;
 use std::path::PathBuf;

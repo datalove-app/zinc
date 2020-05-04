@@ -3,7 +3,7 @@ use crate::gadgets::utils::{bigint_to_fr, fr_to_bigint};
 use crate::gadgets::{Scalar, ScalarTypeExpectation};
 use crate::{Engine, Result, RuntimeError};
 
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use num_bigint::BigInt;
 use num_bigint::Sign;
 use zinc_bytecode::instructions::BitNot;

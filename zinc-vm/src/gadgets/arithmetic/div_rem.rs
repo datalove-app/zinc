@@ -3,7 +3,7 @@ use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::conditional_select::conditional_select;
 use crate::gadgets::{utils, Scalar, ScalarType};
 use crate::{gadgets, Engine, Result, RuntimeError};
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use franklin_crypto::circuit::Assignment;
 use zinc_utils::euclidean;
 

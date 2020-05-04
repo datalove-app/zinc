@@ -1,7 +1,7 @@
 use crate::core::location::CodeLocation;
 use crate::core::{VMInstruction, VirtualMachine};
 use crate::{Engine, RuntimeError};
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use zinc_bytecode::instructions::*;
 
 impl<E, CS> VMInstruction<E, CS> for FileMarker

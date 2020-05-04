@@ -1,11 +1,9 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{Cell, InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::gadgets;
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
 use crate::Engine;
+use bellman::ConstraintSystem;
 use zinc_bytecode::instructions::Div;
 
 impl<E, CS> VMInstruction<E, CS> for Div

@@ -1,7 +1,6 @@
 use crate::gadgets::utils;
-use bellman::ConstraintSystem;
+use bellman::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 use failure::_core::marker::PhantomData;
-use franklin_crypto::bellman::{Index, LinearCombination, SynthesisError, Variable};
 use num_bigint::BigInt;
 use num_traits::Signed;
 use pairing::Engine;

@@ -1,14 +1,13 @@
 mod scalar_type;
 pub use scalar_type::*;
 
-use bellman::{ConstraintSystem, Variable};
 use num_traits::ToPrimitive;
 use std::fmt;
 
 use crate::gadgets::utils;
 use crate::{Engine, Result, RuntimeError};
+use bellman::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
 use ff::{Field, PrimeField};
-use franklin_crypto::bellman::{LinearCombination, SynthesisError};
 use franklin_crypto::circuit::boolean::{AllocatedBit, Boolean};
 use franklin_crypto::circuit::expression::Expression;
 use franklin_crypto::circuit::num::AllocatedNum;

@@ -2,8 +2,8 @@ use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::Scalar;
 use crate::{Engine, Result};
+use bellman::{ConstraintSystem, SynthesisError};
 use ff::Field;
-use franklin_crypto::bellman::{ConstraintSystem, SynthesisError};
 use franklin_crypto::circuit::num::AllocatedNum;
 use franklin_crypto::circuit::Assignment;
 

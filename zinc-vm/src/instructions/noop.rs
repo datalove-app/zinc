@@ -1,8 +1,6 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{RuntimeError, VMInstruction, VirtualMachine};
 use crate::Engine;
+use bellman::ConstraintSystem;
 use zinc_bytecode::instructions::NoOperation;
 
 impl<E, CS> VMInstruction<E, CS> for NoOperation

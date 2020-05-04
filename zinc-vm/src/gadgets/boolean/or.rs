@@ -3,7 +3,7 @@ use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
 use crate::{Engine, Result};
 use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
+use bellman::ConstraintSystem;
 use franklin_crypto::circuit::num::AllocatedNum;
 
 pub fn or<E, CS>(cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
