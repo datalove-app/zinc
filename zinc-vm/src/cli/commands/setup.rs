@@ -11,6 +11,12 @@ use zinc_bytecode::program::Program;
     about = "Generates a pair of proving and verifying keys"
 )]
 pub struct SetupCommand {
+    #[structopt(short = "e", long = "engine", help = " ... something something field engine", default_value = "bn256")]
+    pub engine: String,
+
+    #[structopt(short = "s", long = "system", help = "... something something proof system", default_value = "groth16")]
+    pub proof_system: String,
+
     #[structopt(short = "c", long = "circuit", help = "Circuit's bytecode file")]
     pub circuit_path: PathBuf,
 

@@ -24,10 +24,10 @@ lazy_static = "1.4.0"
 hex = "0.4.0"
 failure = "0.1"
 
-franklin_crypto = { package = "franklin-crypto", git = "https://github.com/matter-labs/franklin-crypto.git", branch = "zinc"}
 pairing = { package = "pairing_ce", version = "0.21.0" }
 bellman = { package = "bellman_ce", version = "0.3.4" }
-ff = { package = "ff_ce", version = "^0.9", features = ["derive"] }
+franklin-crypto = { path = "../../reference/franklin-crypto" }
+ff = { package = "ff_ce", version = "^0.10", features = ["derive"] }
 
 num-bigint = "0.2.3"
 num-traits = "0.2.8"
