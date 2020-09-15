@@ -1,9 +1,10 @@
 use crate::core::EvaluationStack;
 use crate::gadgets::Scalar;
 use crate::stdlib::NativeFunction;
-use crate::{Engine, Result};
-use bellman::ConstraintSystem;
-use franklin_crypto::circuit::pedersen_hash::{pedersen_hash, Personalization};
+use crate::Result;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
+// use franklin_crypto::circuit::pedersen_hash::{pedersen_hash, Personalization};
 
 pub struct Pedersen {
     message_length: usize,
@@ -15,18 +16,18 @@ impl Pedersen {
     }
 }
 
-impl<E: Engine> NativeFunction<E> for Pedersen {
-    fn execute<CS: ConstraintSystem<E>>(
+impl<F: Field> NativeFunction<F> for Pedersen {
+    fn execute<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
-        stack: &mut EvaluationStack<E>,
+        stack: &mut EvaluationStack<F>,
     ) -> Result {
         let mut bits = Vec::new();
         for i in 0..self.message_length {
             let bit = stack
                 .pop()?
                 .value()?
-                .to_boolean(cs.namespace(|| format!("bit {}", i)))?;
+                .to_boolean(cs.ns(|| format!("bit {}", i)))?;
 
             bits.push(bit);
         }
@@ -36,7 +37,7 @@ impl<E: Engine> NativeFunction<E> for Pedersen {
             cs,
             Personalization::NoteCommitment,
             bits.as_slice(),
-            E::jubjub_params(),
+            F::jubjub_params(),
         )?;
 
         stack.push(Scalar::from(digest.get_x()).into())?;

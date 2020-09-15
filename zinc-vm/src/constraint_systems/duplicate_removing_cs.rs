@@ -1,19 +1,17 @@
-use bellman::ConstraintSystem;
-use ff::Field;
-use franklin_crypto::bellman::{Index, LinearCombination, SynthesisError, Variable};
-use pairing::Engine;
+use algebra::Field;
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
-pub struct DuplicateRemovingCS<E, CS>(CS, PhantomData<E>)
+pub struct DuplicateRemovingCS<F, CS>(CS, PhantomData<F>)
 where
-    E: Engine,
-    CS: ConstraintSystem<E>;
+    F: Field,
+    CS: ConstraintSystem<F>;
 
-impl<E, CS> DuplicateRemovingCS<E, CS>
+impl<F, CS> DuplicateRemovingCS<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     pub fn new(cs: CS) -> Self {
         Self(cs, PhantomData)
@@ -32,25 +30,25 @@ where
     }
 }
 
-impl<E, CS> ConstraintSystem<E> for DuplicateRemovingCS<E, CS>
+impl<F, CS> ConstraintSystem<F> for DuplicateRemovingCS<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     type Root = Self;
 
-    fn alloc<F, A, AR>(&mut self, annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc<FF, A, AR>(&mut self, annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
         self.0.alloc(annotation, f)
     }
 
-    fn alloc_input<F, A, AR>(&mut self, annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc_input<FF, A, AR>(&mut self, annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -61,9 +59,9 @@ where
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         self.0.enforce(
             annotation,
@@ -88,13 +86,17 @@ where
     fn get_root(&mut self) -> &mut Self::Root {
         self
     }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
+    }
 }
 
-fn remove_duplicates<E: Engine>(lc: LinearCombination<E>) -> LinearCombination<E> {
-    let mut inputs_map = BTreeMap::<usize, E::Fr>::new();
-    let mut aux_map = BTreeMap::<usize, E::Fr>::new();
+fn remove_duplicates<F: Field>(lc: LinearCombination<F>) -> LinearCombination<F> {
+    let mut inputs_map = BTreeMap::<usize, F>::new();
+    let mut aux_map = BTreeMap::<usize, F>::new();
 
-    let zero = E::Fr::zero();
+    let zero = F::zero();
     for (var, c) in lc.as_ref() {
         match var.get_unchecked() {
             Index::Input(i) => {

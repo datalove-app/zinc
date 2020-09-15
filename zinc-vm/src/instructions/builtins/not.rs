@@ -1,22 +1,19 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
+use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::gadgets;
-use crate::Engine;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Not;
 
-impl<E, CS> VMInstruction<E, CS> for Not
+impl<F, CS> VMInstruction<F, CS> for Not
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let value = vm.pop()?.value()?;
 
         let cs = vm.constraint_system();
-        let not = gadgets::not(cs.namespace(|| "not"), &value)?;
+        let not = gadgets::not(cs.ns(|| "not"), &value)?;
 
         vm.push(Cell::Value(not))
     }

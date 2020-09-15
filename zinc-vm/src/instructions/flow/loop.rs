@@ -1,26 +1,24 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{InternalVM, RuntimeError, VMInstruction, VirtualMachine};
-use crate::Engine;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::{LoopBegin, LoopEnd};
 
-impl<E, CS> VMInstruction<E, CS> for LoopBegin
+impl<F, CS> VMInstruction<F, CS> for LoopBegin
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.loop_begin(self.iterations)
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for LoopEnd
+impl<F, CS> VMInstruction<F, CS> for LoopEnd
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.loop_end()
     }
 }

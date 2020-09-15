@@ -1,20 +1,19 @@
 use crate::gadgets::utils;
-use bellman::ConstraintSystem;
+use algebra::{Field, PrimeField};
 use failure::_core::marker::PhantomData;
-use franklin_crypto::bellman::{Index, LinearCombination, SynthesisError, Variable};
 use num_bigint::BigInt;
 use num_traits::Signed;
-use pairing::Engine;
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 
-pub struct LoggingConstraintSystem<E, CS>(CS, PhantomData<E>)
+pub struct LoggingConstraintSystem<F, CS>(CS, PhantomData<F>)
 where
-    E: Engine,
-    CS: ConstraintSystem<E>;
+    F: Field,
+    CS: ConstraintSystem<F>;
 
-impl<E, CS> LoggingConstraintSystem<E, CS>
+impl<F, CS> LoggingConstraintSystem<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     pub fn new(cs: CS) -> Self {
         Self(cs, PhantomData)
@@ -33,16 +32,16 @@ where
     }
 }
 
-impl<E, CS> ConstraintSystem<E> for LoggingConstraintSystem<E, CS>
+impl<F, CS> ConstraintSystem<F> for LoggingConstraintSystem<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     type Root = Self;
 
-    fn alloc<F, A, AR>(&mut self, annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc<FF, A, AR>(&mut self, annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -65,9 +64,9 @@ where
         Ok(variable)
     }
 
-    fn alloc_input<F, A, AR>(&mut self, annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc_input<FF, A, AR>(&mut self, annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -94,9 +93,9 @@ where
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         let ar = annotation().into();
         let lc_a = a(LinearCombination::zero());
@@ -128,9 +127,13 @@ where
     fn get_root(&mut self) -> &mut Self::Root {
         self
     }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
+    }
 }
 
-fn lc_to_string<E: Engine>(lc: &LinearCombination<E>) -> String {
+fn lc_to_string<F: PrimeField>(lc: &LinearCombination<F>) -> String {
     let mut string = String::new();
 
     let mut is_first = true;

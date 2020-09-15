@@ -1,34 +1,30 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
-use crate::core::{InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
-use crate::Engine;
+use crate::core::{InternalVM, RuntimeError, VMInstruction, VirtualMachine};
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::{Call, Return};
 
-impl<E, CS> VMInstruction<E, CS> for Call
+impl<F, CS> VMInstruction<F, CS> for Call
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.call(self.address, self.inputs_count)
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for Return
+impl<F, CS> VMInstruction<F, CS> for Return
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.ret(self.outputs_count)
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     //    #[test]
     //    fn test_func() -> Result<(), TestingError> {
     //        let _ = env_logger::builder().is_test(true).try_init();

@@ -1,19 +1,17 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{Cell, InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::gadgets;
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
-use crate::Engine;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Div;
 
-impl<E, CS> VMInstruction<E, CS> for Div
+impl<F, CS> VMInstruction<F, CS> for Div
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let right = vm.pop()?.value()?;
         let left = vm.pop()?.value()?;
 
@@ -26,24 +24,24 @@ where
             ScalarType::Field => {
                 let one = Scalar::new_constant_int(1, right.get_type());
                 let denom = gadgets::conditional_select(
-                    cs.namespace(|| "select denom"),
+                    cs.ns(|| "select denom"),
                     &condition,
                     &right,
                     &one,
                 )?;
-                let inverse = gadgets::inverse(cs.namespace(|| "inverse"), &denom)?;
-                gadgets::mul(cs.namespace(|| "div"), &left, &inverse)?
+                let inverse = gadgets::inverse(cs.ns(|| "inverse"), &denom)?;
+                gadgets::mul(cs.ns(|| "div"), &left, &inverse)?
             }
             ScalarType::Integer(_) => {
                 let (unchecked_div, _rem) = gadgets::div_rem_conditional(
-                    cs.namespace(|| "div_rem_conditional"),
+                    cs.ns(|| "div_rem_conditional"),
                     &condition,
                     &left,
                     &right,
                 )?;
 
                 gadgets::types::conditional_type_check(
-                    cs.namespace(|| "type check"),
+                    cs.ns(|| "type check"),
                     &condition,
                     &unchecked_div,
                     scalar_type,

@@ -1,69 +1,68 @@
 mod scalar_type;
 pub use scalar_type::*;
 
-use bellman::{ConstraintSystem, Variable};
-use num_traits::ToPrimitive;
-use std::fmt;
-
-use crate::gadgets::utils;
-use crate::{Engine, Result, RuntimeError};
-use ff::{Field, PrimeField};
-use franklin_crypto::bellman::{LinearCombination, SynthesisError};
-use franklin_crypto::circuit::boolean::{AllocatedBit, Boolean};
-use franklin_crypto::circuit::expression::Expression;
-use franklin_crypto::circuit::num::AllocatedNum;
-use franklin_crypto::circuit::Assignment;
+use crate::gadgets::{utils, AllocatedNum, Expression};
+use crate::{Result, RuntimeError};
+use algebra::{Field, PrimeField};
 use num_bigint::{BigInt, ToBigInt};
+use num_traits::ToPrimitive;
+use r1cs_core::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
+use r1cs_std::{
+    alloc::AllocGadget,
+    boolean::{AllocatedBit, Boolean},
+    Assignment,
+};
+use std::fmt;
 
 /// Scalar is a primitive value that can be stored on the stack and operated by VM's instructions.
 #[derive(Debug, Clone)]
-pub struct Scalar<E: Engine> {
-    variant: ScalarVariant<E>,
+pub struct Scalar<F: Field> {
+    variant: ScalarVariant<F>,
     scalar_type: ScalarType,
 }
 
 #[derive(Debug, Clone)]
-pub enum ScalarVariant<E: Engine> {
-    Constant(ScalarConstant<E>),
-    Variable(ScalarVariable<E>),
+pub enum ScalarVariant<F: Field> {
+    Constant(ScalarConstant<F>),
+    Variable(ScalarVariable<F>),
 }
 
-impl<E: Engine> From<ScalarConstant<E>> for ScalarVariant<E> {
-    fn from(constant: ScalarConstant<E>) -> Self {
+impl<F: Field> From<ScalarConstant<F>> for ScalarVariant<F> {
+    fn from(constant: ScalarConstant<F>) -> Self {
         Self::Constant(constant)
     }
 }
 
-impl<E: Engine> From<ScalarVariable<E>> for ScalarVariant<E> {
-    fn from(variable: ScalarVariable<E>) -> Self {
+impl<F: Field> From<ScalarVariable<F>> for ScalarVariant<F> {
+    fn from(variable: ScalarVariable<F>) -> Self {
         Self::Variable(variable)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ScalarConstant<E: Engine> {
-    pub value: E::Fr,
+pub struct ScalarConstant<F: Field> {
+    pub value: F,
 }
 
 #[derive(Debug, Clone)]
-pub struct ScalarVariable<E: Engine> {
-    value: Option<E::Fr>,
+pub struct ScalarVariable<F: Field> {
+    value: Option<F>,
     variable: Variable,
 }
 
-impl<E: Engine> Scalar<E> {
+impl<F: Field> Scalar<F> {
     pub fn new_constant_int(value: usize, scalar_type: ScalarType) -> Self {
         let value_string = value.to_string();
-        let fr = E::Fr::from_str(&value_string).expect("failed to convert u64 into Fr");
+        let fr = F::from_str(&value_string).expect("failed to convert u64 into Fr");
         Self::new_constant_fr(fr, scalar_type)
     }
 
     pub fn new_constant_bool(value: bool) -> Self {
-        let fr = if value { E::Fr::one() } else { E::Fr::zero() };
+        let fr = if value { F::one() } else { F::zero() };
         Self::new_constant_fr(fr, ScalarType::Boolean)
     }
 
-    pub fn new_constant_fr(value: E::Fr, scalar_type: ScalarType) -> Self {
+    pub fn new_constant_fr(value: F, scalar_type: ScalarType) -> Self {
         Self {
             variant: ScalarConstant { value }.into(),
             scalar_type,
@@ -71,7 +70,7 @@ impl<E: Engine> Scalar<E> {
     }
 
     pub fn new_constant_bigint(value: &BigInt, scalar_type: ScalarType) -> Result<Self> {
-        let fr = utils::bigint_to_fr::<E>(value).ok_or(RuntimeError::ValueOverflow {
+        let fr = utils::bigint_to_fr::<F>(value).ok_or(RuntimeError::ValueOverflow {
             value: value.clone(),
             scalar_type,
         })?;
@@ -79,7 +78,7 @@ impl<E: Engine> Scalar<E> {
     }
 
     pub fn new_unchecked_variable(
-        value: Option<E::Fr>,
+        value: Option<F>,
         variable: Variable,
         scalar_type: ScalarType,
     ) -> Self {
@@ -89,19 +88,21 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn to_expression<CS: ConstraintSystem<E>>(&self) -> Expression<E> {
+    pub fn to_expression<CS: ConstraintSystem<F>>(&self) -> Expression<F> {
         Expression::new(self.get_value(), self.lc::<CS>())
     }
 
-    pub fn to_boolean<CS: ConstraintSystem<E>>(&self, mut cs: CS) -> Result<Boolean> {
+    pub fn to_boolean<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Boolean> {
         self.scalar_type.assert_type(ScalarType::Boolean)?;
 
         match &self.variant {
             ScalarVariant::Constant(constant) => Ok(Boolean::constant(!constant.value.is_zero())),
             ScalarVariant::Variable(variable) => {
                 let bit = AllocatedBit::alloc(
-                    cs.namespace(|| "allocate bit"),
-                    variable.value.map(|value| !value.is_zero()),
+                    cs.ns(|| "allocate bit"),
+                    || variable.value
+                        .ok_or(SynthesisError::AssignmentMissing)
+                        .map(|value| !value.is_zero()),
                 )?;
 
                 cs.enforce(
@@ -120,22 +121,25 @@ impl<E: Engine> Scalar<E> {
         self.scalar_type
     }
 
-    pub fn get_value(&self) -> Option<E::Fr> {
+    pub fn get_value(&self) -> Option<F> {
         match &self.variant {
             ScalarVariant::Constant(constant) => Some(constant.value),
             ScalarVariant::Variable(variable) => variable.value,
         }
     }
 
-    pub fn get_variant(&self) -> &ScalarVariant<E> {
+    pub fn get_variant(&self) -> &ScalarVariant<F> {
         &self.variant
     }
 
-    pub fn grab_value(&self) -> std::result::Result<E::Fr, SynthesisError> {
-        self.get_value().grab()
+    pub fn grab_value(&self) -> std::result::Result<F, SynthesisError> {
+        match self.get_value() {
+            Some(v) => Ok(v.clone()),
+            None => Err(SynthesisError::AssignmentMissing),
+        }
     }
 
-    pub fn get_constant(&self) -> Result<E::Fr> {
+    pub fn get_constant(&self) -> Result<F> {
         match &self.variant {
             ScalarVariant::Constant(constant) => Ok(constant.value),
             _ => Err(RuntimeError::ExpectedConstant),
@@ -168,7 +172,7 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn lc<CS: ConstraintSystem<E>>(&self) -> LinearCombination<E> {
+    pub fn lc<CS: ConstraintSystem<F>>(&self) -> LinearCombination<F> {
         match &self.variant {
             ScalarVariant::Constant(constant) => {
                 LinearCombination::zero() + (constant.value, CS::one())
@@ -177,19 +181,22 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn get_bits_le<CS: ConstraintSystem<E>>(&self, mut cs: CS) -> Result<Vec<Self>> {
+    pub fn get_bits_le<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Vec<Self>>
+    where
+        F: PrimeField,
+    {
         let num = self.to_expression::<CS>();
         let bits = match self.scalar_type {
-            ScalarType::Field => num.into_bits_le_strict(cs.namespace(|| "into_bits_le_strict")),
+            ScalarType::Field => num.into_bits_le_strict(cs.ns(|| "into_bits_le_strict")),
             scalar_type => num.into_bits_le_fixed(
-                cs.namespace(|| "into_bits_le_fixed"),
-                scalar_type.bit_length::<E>(),
+                cs.ns(|| "into_bits_le_fixed"),
+                scalar_type.bit_length::<F>(),
             ),
         }?;
 
         bits.into_iter()
             .enumerate()
-            .map(|(i, bit)| Self::from_boolean(cs.namespace(|| format!("bit {}", i)), bit))
+            .map(|(i, bit)| Self::from_boolean(cs.ns(|| format!("bit {}", i)), bit))
             .collect()
     }
 
@@ -200,21 +207,21 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn from_boolean<CS: ConstraintSystem<E>>(mut cs: CS, boolean: Boolean) -> Result<Self> {
+    pub fn from_boolean<CS: ConstraintSystem<F>>(mut cs: CS, boolean: Boolean) -> Result<Self> {
         match boolean {
             Boolean::Is(bit) => Ok(Self::new_unchecked_variable(
-                bit.get_value_field::<E>(),
+                bit.get_value_field::<F>(),
                 bit.get_variable(),
                 ScalarType::Boolean,
             )),
             Boolean::Not(bit) => {
-                let expr = Expression::constant::<CS>(E::Fr::one()) - Expression::from(&bit);
-                let num = expr.into_number(cs.namespace(|| "into_number"))?;
+                let expr = Expression::constant::<CS>(F::one()) - Expression::from(&bit);
+                let num = expr.into_number(cs.ns(|| "into_number"))?;
                 let scalar = Self::from(num);
                 Ok(scalar.with_type_unchecked(ScalarType::Boolean))
             }
             Boolean::Constant(_) => Ok(Self::new_constant_fr(
-                boolean.get_value_field::<E>().unwrap(),
+                boolean.get_value_field::<F>().unwrap(),
                 ScalarType::Boolean,
             )),
         }
@@ -225,7 +232,7 @@ impl<E: Engine> Scalar<E> {
     }
 }
 
-//impl<E: Engine> fmt::Debug for Scalar<E> {
+//impl<F: Field> fmt::Debug for Scalar<F> {
 //    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 //        let value_str = self
 //            .value
@@ -240,7 +247,7 @@ impl<E: Engine> Scalar<E> {
 //    }
 //}
 
-impl<E: Engine> fmt::Display for Scalar<E> {
+impl<F: Field> fmt::Display for Scalar<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value_str = self
             .get_value()
@@ -252,15 +259,15 @@ impl<E: Engine> fmt::Display for Scalar<E> {
     }
 }
 
-impl<E: Engine> ToBigInt for Scalar<E> {
+impl<F: PrimeField> ToBigInt for Scalar<F> {
     fn to_bigint(&self) -> Option<BigInt> {
         self.get_value()
             .map(|fr| utils::fr_to_bigint(&fr, self.is_signed()))
     }
 }
 
-impl<E: Engine> From<&AllocatedNum<E>> for Scalar<E> {
-    fn from(num: &AllocatedNum<E>) -> Self {
+impl<F: Field> From<&AllocatedNum<F>> for Scalar<F> {
+    fn from(num: &AllocatedNum<F>) -> Self {
         Self {
             variant: ScalarVariable {
                 value: num.get_value(),
@@ -272,8 +279,8 @@ impl<E: Engine> From<&AllocatedNum<E>> for Scalar<E> {
     }
 }
 
-impl<E: Engine> From<AllocatedNum<E>> for Scalar<E> {
-    fn from(num: AllocatedNum<E>) -> Self {
+impl<F: Field> From<AllocatedNum<F>> for Scalar<F> {
+    fn from(num: AllocatedNum<F>) -> Self {
         Self {
             variant: ScalarVariable {
                 value: num.get_value(),

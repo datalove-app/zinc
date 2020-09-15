@@ -1,15 +1,15 @@
 use crate::core::{Cell, InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
-use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::PushConst;
 
-impl<E, CS> VMInstruction<E, CS> for PushConst
+impl<F, CS> VMInstruction<F, CS> for PushConst
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let value = vm
             .operations()
             .constant_bigint(&self.value, self.scalar_type)?;

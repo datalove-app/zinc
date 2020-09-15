@@ -1,20 +1,16 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::auto_const;
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
-use crate::gadgets::auto_const::prelude::*;
-use crate::gadgets::{ScalarType, ScalarTypeExpectation};
-use crate::{gadgets, Engine};
+use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
+use crate::gadgets::{self, auto_const::prelude::*, ScalarType, ScalarTypeExpectation};
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Sub;
 
-impl<E, CS> VMInstruction<E, CS> for Sub
+impl<F, CS> VMInstruction<F, CS> for Sub
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let right = vm.pop()?.value()?;
         let left = vm.pop()?.value()?;
 
@@ -23,15 +19,11 @@ where
         let condition = vm.condition_top()?;
         let cs = vm.constraint_system();
 
-        let unchecked_diff = auto_const!(
-            gadgets::arithmetic::sub,
-            cs.namespace(|| "diff"),
-            &left,
-            &right
-        )?;
+        let unchecked_diff =
+            auto_const!(gadgets::arithmetic::sub, cs.ns(|| "diff"), &left, &right)?;
 
         let diff = gadgets::types::conditional_type_check(
-            cs.namespace(|| "type check"),
+            cs.ns(|| "type check"),
             &condition,
             &unchecked_diff,
             diff_type,

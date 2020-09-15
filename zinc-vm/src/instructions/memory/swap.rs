@@ -1,15 +1,15 @@
 use crate::core::{InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
-use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Swap;
 
-impl<E, CS> VMInstruction<E, CS> for Swap
+impl<F, CS> VMInstruction<F, CS> for Swap
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let a = vm.pop()?;
         let b = vm.pop()?;
         vm.push(a)?;

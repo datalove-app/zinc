@@ -1,21 +1,22 @@
 use crate::core::{Block, Branch, Cell, FunctionFrame, Loop, VirtualMachine};
 use crate::errors::MalformedBytecode;
+use crate::gadgets;
 use crate::gadgets::Gadgets;
 use crate::stdlib::NativeFunction;
 use crate::Result;
 use crate::RuntimeError;
-use crate::{gadgets, Engine};
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 
 /// This is an internal interface to virtual machine used by instructions.
-pub trait InternalVM<E: Engine> {
-    fn push(&mut self, cell: Cell<E>) -> Result;
-    fn pop(&mut self) -> Result<Cell<E>>;
+pub trait InternalVM<F: Field> {
+    fn push(&mut self, cell: Cell<F>) -> Result;
+    fn pop(&mut self) -> Result<Cell<F>>;
 
-    fn load(&mut self, address: usize) -> Result<Cell<E>>;
-    fn load_global(&mut self, address: usize) -> Result<Cell<E>>;
-    fn store(&mut self, address: usize, cell: Cell<E>) -> Result;
-    fn store_global(&mut self, address: usize, cell: Cell<E>) -> Result;
+    fn load(&mut self, address: usize) -> Result<Cell<F>>;
+    fn load_global(&mut self, address: usize) -> Result<Cell<F>>;
+    fn store(&mut self, address: usize, cell: Cell<F>) -> Result;
+    fn store_global(&mut self, address: usize, cell: Cell<F>) -> Result;
 
     fn loop_begin(&mut self, iter_count: usize) -> Result;
     fn loop_end(&mut self) -> Result;
@@ -28,32 +29,32 @@ pub trait InternalVM<E: Engine> {
     fn branch_end(&mut self) -> Result;
 
     fn exit(&mut self, values_count: usize) -> Result;
-    fn call_native<F: NativeFunction<E>>(&mut self, function: F) -> Result;
+    fn call_native<FF: NativeFunction<F>>(&mut self, function: FF) -> Result;
 }
 
-impl<E, CS> InternalVM<E> for VirtualMachine<E, CS>
+impl<F, CS> InternalVM<F> for VirtualMachine<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn push(&mut self, cell: Cell<E>) -> Result {
+    fn push(&mut self, cell: Cell<F>) -> Result {
         self.state.evaluation_stack.push(cell)
     }
 
-    fn pop(&mut self) -> Result<Cell<E>> {
+    fn pop(&mut self) -> Result<Cell<F>> {
         self.state.evaluation_stack.pop()
     }
 
-    fn load(&mut self, address: usize) -> Result<Cell<E>> {
+    fn load(&mut self, address: usize) -> Result<Cell<F>> {
         let offset = self.top_frame()?.stack_frame_begin;
         self.state.data_stack.get(offset + address)
     }
 
-    fn load_global(&mut self, address: usize) -> Result<Cell<E>> {
+    fn load_global(&mut self, address: usize) -> Result<Cell<F>> {
         self.state.data_stack.get(address)
     }
 
-    fn store(&mut self, address: usize, cell: Cell<E>) -> Result {
+    fn store(&mut self, address: usize, cell: Cell<F>) -> Result {
         {
             let frame = self.top_frame()?;
             frame.stack_frame_end =
@@ -63,7 +64,7 @@ where
         self.state.data_stack.set(offset + address, cell)
     }
 
-    fn store_global(&mut self, address: usize, cell: Cell<E>) -> Result {
+    fn store_global(&mut self, address: usize, cell: Cell<F>) -> Result {
         self.state.data_stack.set(address, cell)
     }
 
@@ -141,7 +142,7 @@ where
         let prev = self.condition_top()?;
 
         let cs = self.constraint_system();
-        let next = gadgets::boolean::and(cs.namespace(|| "branch"), &condition, &prev)?;
+        let next = gadgets::boolean::and(cs.ns(|| "branch"), &condition, &prev)?;
         self.state.conditions_stack.push(next);
 
         let branch = Branch {
@@ -184,7 +185,7 @@ where
         self.condition_pop()?;
         let prev = self.condition_top()?;
         let cs = self.constraint_system();
-        let not_cond = gadgets::not(cs.namespace(|| "not"), &condition)?;
+        let not_cond = gadgets::not(cs.ns(|| "not"), &condition)?;
         let next = self.operations().and(prev, not_cond)?;
         self.condition_push(next)?;
 
@@ -234,10 +235,10 @@ where
         Ok(())
     }
 
-    fn call_native<F: NativeFunction<E>>(&mut self, function: F) -> Result {
+    fn call_native<FF: NativeFunction<F>>(&mut self, function: FF) -> Result {
         let stack = &mut self.state.evaluation_stack;
         let cs = &mut self.cs.cs;
 
-        function.execute(cs.namespace(|| "native function"), stack)
+        function.execute(cs.ns(|| "native function"), stack)
     }
 }

@@ -1,19 +1,19 @@
 use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{Scalar, ScalarType};
-use crate::{Engine, Result};
-use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
+use crate::Result;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 
-pub fn mul<E, CS>(cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
+pub fn mul<F, CS>(cs: CS, left: &Scalar<F>, right: &Scalar<F>) -> Result<Scalar<F>>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    pub fn mul_inner<E, CS>(mut cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
+    pub fn mul_inner<F, CS>(mut cs: CS, left: &Scalar<F>, right: &Scalar<F>) -> Result<Scalar<F>>
     where
-        E: Engine,
-        CS: ConstraintSystem<E>,
+        F: Field,
+        CS: ConstraintSystem<F>,
     {
         let mut value = None;
 

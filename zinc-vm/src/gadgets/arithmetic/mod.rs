@@ -4,6 +4,7 @@ mod div_rem;
 mod field;
 mod mul;
 mod neg;
+mod num;
 mod sub;
 
 pub use abs::*;
@@ -12,4 +13,5 @@ pub use div_rem::*;
 pub use field::*;
 pub use mul::*;
 pub use neg::*;
+pub use num::*;
 pub use sub::*;

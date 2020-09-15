@@ -1,31 +1,30 @@
-use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
-use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
-use crate::{Engine, Result};
-use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
-use franklin_crypto::circuit::num::AllocatedNum;
+use crate::gadgets::{AllocatedNum, Scalar, ScalarType, ScalarTypeExpectation};
+use crate::{auto_const, Result};
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
+use r1cs_std::alloc::AllocGadget;
 
-pub fn or<E, CS>(cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
+pub fn or<F, CS>(cs: CS, left: &Scalar<F>, right: &Scalar<F>) -> Result<Scalar<F>>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn inner<E, CS>(mut cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
+    fn inner<F, CS>(mut cs: CS, left: &Scalar<F>, right: &Scalar<F>) -> Result<Scalar<F>>
     where
-        E: Engine,
-        CS: ConstraintSystem<E>,
+        F: Field,
+        CS: ConstraintSystem<F>,
     {
         left.get_type().assert_type(ScalarType::Boolean)?;
         right.get_type().assert_type(ScalarType::Boolean)?;
 
-        let num = AllocatedNum::alloc(cs.namespace(|| "value"), || {
+        let num = AllocatedNum::alloc(cs.ns(|| "value"), || {
             let l = left.grab_value()?;
             let r = right.grab_value()?;
             if l.is_zero() && r.is_zero() {
-                Ok(E::Fr::zero())
+                Ok(F::zero())
             } else {
-                Ok(E::Fr::one())
+                Ok(F::one())
             }
         })?;
 

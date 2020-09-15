@@ -1,19 +1,15 @@
-use ff::Field;
-use franklin_crypto::bellman::{
-    ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
-};
+use algebra::Field;
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 
-use crate::Engine;
-
-pub struct DebugConstraintSystem<E: Engine> {
-    inputs: Vec<E::Fr>,
-    witness: Vec<E::Fr>,
+pub struct DebugConstraintSystem<F: Field> {
+    inputs: Vec<F>,
+    witness: Vec<F>,
 
     satisfied: bool,
     constraints_num: usize,
 }
 
-impl<E: Engine> Default for DebugConstraintSystem<E> {
+impl<F: Field> Default for DebugConstraintSystem<F> {
     fn default() -> Self {
         let mut cs = Self {
             inputs: Vec::new(),
@@ -22,12 +18,12 @@ impl<E: Engine> Default for DebugConstraintSystem<E> {
             constraints_num: 0,
         };
 
-        cs.inputs.push(E::Fr::one());
+        cs.inputs.push(F::one());
         cs
     }
 }
 
-impl<E: Engine> DebugConstraintSystem<E> {
+impl<F: Field> DebugConstraintSystem<F> {
     pub fn is_satisfied(&self) -> bool {
         self.satisfied
     }
@@ -37,12 +33,12 @@ impl<E: Engine> DebugConstraintSystem<E> {
     }
 }
 
-impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
+impl<F: Field> ConstraintSystem<F> for DebugConstraintSystem<F> {
     type Root = Self;
 
-    fn alloc<F, A, AR>(&mut self, _annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc<FF, A, AR>(&mut self, _annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -51,9 +47,9 @@ impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
         Ok(Variable::new_unchecked(Index::Aux(self.witness.len() - 1)))
     }
 
-    fn alloc_input<F, A, AR>(&mut self, _annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc_input<FF, A, AR>(&mut self, _annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
@@ -66,17 +62,17 @@ impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
         let zero = LinearCombination::zero();
-        let value_a = eval_lc::<E>(a(zero.clone()).as_ref(), &self.inputs, &self.witness);
-        let value_b = eval_lc::<E>(b(zero.clone()).as_ref(), &self.inputs, &self.witness);
-        let value_c = eval_lc::<E>(c(zero).as_ref(), &self.inputs, &self.witness);
+        let value_a = eval_lc::<F>(a(zero.clone()).as_ref(), &self.inputs, &self.witness);
+        let value_b = eval_lc::<F>(b(zero.clone()).as_ref(), &self.inputs, &self.witness);
+        let value_c = eval_lc::<F>(c(zero).as_ref(), &self.inputs, &self.witness);
 
         let value_ab = {
-            let mut tmp: E::Fr = value_a;
+            let mut tmp: F = value_a;
             tmp.mul_assign(&value_b);
             tmp
         };
@@ -100,10 +96,14 @@ impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
     fn get_root(&mut self) -> &mut Self::Root {
         self
     }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
+    }
 }
 
-fn eval_lc<E: Engine>(terms: &[(Variable, E::Fr)], inputs: &[E::Fr], witness: &[E::Fr]) -> E::Fr {
-    let mut acc = E::Fr::zero();
+fn eval_lc<F: Field>(terms: &[(Variable, F)], inputs: &[F], witness: &[F]) -> F {
+    let mut acc = F::zero();
 
     for &(var, ref coeff) in terms {
         let mut tmp = match var.get_unchecked() {
@@ -111,7 +111,7 @@ fn eval_lc<E: Engine>(terms: &[(Variable, E::Fr)], inputs: &[E::Fr], witness: &[
             Index::Aux(index) => witness[index],
         };
 
-        tmp.mul_assign(&coeff);
+        tmp.mul_assign(coeff);
         acc.add_assign(&tmp);
     }
 

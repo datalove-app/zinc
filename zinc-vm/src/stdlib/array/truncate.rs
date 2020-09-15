@@ -1,7 +1,8 @@
 use crate::core::EvaluationStack;
 use crate::stdlib::NativeFunction;
-use crate::{Engine, MalformedBytecode, Result};
-use bellman::ConstraintSystem;
+use crate::{MalformedBytecode, Result};
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 
 pub struct Truncate {
     array_length: usize,
@@ -21,8 +22,8 @@ impl Truncate {
     }
 }
 
-impl<E: Engine> NativeFunction<E> for Truncate {
-    fn execute<CS: ConstraintSystem<E>>(&self, _cs: CS, stack: &mut EvaluationStack<E>) -> Result {
+impl<F: Field> NativeFunction<F> for Truncate {
+    fn execute<CS: ConstraintSystem<F>>(&self, _cs: CS, stack: &mut EvaluationStack<F>) -> Result {
         let new_length = stack.pop()?.value()?.get_constant_usize()?;
 
         if new_length > self.array_length {

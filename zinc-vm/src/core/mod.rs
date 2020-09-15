@@ -9,30 +9,30 @@ pub use state::*;
 use crate::core::location::CodeLocation;
 use crate::errors::MalformedBytecode;
 use crate::gadgets::{Gadgets, Scalar, ScalarType};
-use crate::Engine;
+use algebra::Field;
 use colored::Colorize;
-use franklin_crypto::bellman::ConstraintSystem;
 use num_bigint::{BigInt, ToBigInt};
+use r1cs_core::{ConstraintSystem, Namespace};
 use std::marker::PhantomData;
 use zinc_bytecode::data::types as object_types;
 use zinc_bytecode::program::Program;
 use zinc_bytecode::{dispatch_instruction, Instruction, InstructionInfo};
 
-pub trait VMInstruction<E, CS>: InstructionInfo
+pub trait VMInstruction<F, CS>: InstructionInfo
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError>;
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError>;
 }
 
-struct CounterNamespace<E: Engine, CS: ConstraintSystem<E>> {
+struct CounterNamespace<F: Field, CS: ConstraintSystem<F>> {
     cs: CS,
     counter: usize,
-    _pd: PhantomData<E>,
+    _pd: PhantomData<F>,
 }
 
-impl<E: Engine, CS: ConstraintSystem<E>> CounterNamespace<E, CS> {
+impl<F: Field, CS: ConstraintSystem<F>> CounterNamespace<F, CS> {
     fn new(cs: CS) -> Self {
         Self {
             cs,
@@ -41,22 +41,22 @@ impl<E: Engine, CS: ConstraintSystem<E>> CounterNamespace<E, CS> {
         }
     }
 
-    fn namespace(&mut self) -> bellman::Namespace<E, CS::Root> {
+    fn namespace(&mut self) -> Namespace<F, CS::Root> {
         let namespace = self.counter.to_string();
         self.counter += 1;
-        self.cs.namespace(|| namespace)
+        self.cs.ns(|| namespace)
     }
 }
 
-pub struct VirtualMachine<E: Engine, CS: ConstraintSystem<E>> {
+pub struct VirtualMachine<F: Field, CS: ConstraintSystem<F>> {
     pub(crate) debugging: bool,
-    state: State<E>,
-    cs: CounterNamespace<E, CS>,
-    outputs: Vec<Scalar<E>>,
+    state: State<F>,
+    cs: CounterNamespace<F, CS>,
+    outputs: Vec<Scalar<F>>,
     pub(crate) location: CodeLocation,
 }
 
-impl<E: Engine, CS: ConstraintSystem<E>> VirtualMachine<E, CS> {
+impl<F: Field, CS: ConstraintSystem<F>> VirtualMachine<F, CS> {
     pub fn new(cs: CS, debugging: bool) -> Self {
         Self {
             debugging,
@@ -77,16 +77,16 @@ impl<E: Engine, CS: ConstraintSystem<E>> VirtualMachine<E, CS> {
         &mut self.cs.cs
     }
 
-    pub fn run<CB, F>(
+    pub fn run<CB, FF>(
         &mut self,
         program: &Program,
         inputs: Option<&[BigInt]>,
         mut instruction_callback: CB,
-        mut check_cs: F,
+        mut check_cs: FF,
     ) -> Result<Vec<Option<BigInt>>, RuntimeError>
     where
         CB: FnMut(&CS) -> (),
-        F: FnMut(&CS) -> Result<(), RuntimeError>,
+        FF: FnMut(&CS) -> Result<(), RuntimeError>,
     {
         self.cs.cs.enforce(
             || "ONE * ONE = ONE (do this to avoid `unconstrained` error)",
@@ -165,23 +165,23 @@ impl<E: Engine, CS: ConstraintSystem<E>> VirtualMachine<E, CS> {
         Ok(outputs_bigint)
     }
 
-    pub fn operations(&mut self) -> Gadgets<E, bellman::Namespace<E, CS::Root>> {
+    pub fn operations(&mut self) -> Gadgets<F, Namespace<F, CS::Root>> {
         Gadgets::new(self.cs.namespace())
     }
 
-    pub fn condition_push(&mut self, element: Scalar<E>) -> Result<(), RuntimeError> {
+    pub fn condition_push(&mut self, element: Scalar<F>) -> Result<(), RuntimeError> {
         self.state.conditions_stack.push(element);
         Ok(())
     }
 
-    pub fn condition_pop(&mut self) -> Result<Scalar<E>, RuntimeError> {
+    pub fn condition_pop(&mut self) -> Result<Scalar<F>, RuntimeError> {
         self.state
             .conditions_stack
             .pop()
             .ok_or_else(|| MalformedBytecode::StackUnderflow.into())
     }
 
-    pub fn condition_top(&mut self) -> Result<Scalar<E>, RuntimeError> {
+    pub fn condition_top(&mut self) -> Result<Scalar<F>, RuntimeError> {
         self.state
             .conditions_stack
             .last()
@@ -189,7 +189,7 @@ impl<E: Engine, CS: ConstraintSystem<E>> VirtualMachine<E, CS> {
             .ok_or_else(|| MalformedBytecode::StackUnderflow.into())
     }
 
-    fn top_frame(&mut self) -> Result<&mut FunctionFrame<E>, RuntimeError> {
+    fn top_frame(&mut self) -> Result<&mut FunctionFrame<F>, RuntimeError> {
         self.state
             .frames_stack
             .last_mut()

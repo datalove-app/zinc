@@ -2,19 +2,20 @@ pub mod prelude {
     pub use crate::constraint_systems::ConstantCS;
     pub use crate::gadgets::{Scalar, ScalarVariant};
 
-    use crate::{Engine, Result};
+    use crate::Result;
+    use algebra::Field;
 
     pub trait ToConstant: Sized {
         fn to_constant(&self) -> Result<Self>;
     }
 
-    impl<E: Engine> ToConstant for Scalar<E> {
+    impl<F: Field> ToConstant for Scalar<F> {
         fn to_constant(&self) -> Result<Self> {
             self.as_constant_unchecked()
         }
     }
 
-    impl<E: Engine> ToConstant for (Scalar<E>, Scalar<E>) {
+    impl<F: Field> ToConstant for (Scalar<F>, Scalar<F>) {
         fn to_constant(&self) -> Result<Self> {
             Ok((
                 self.0.as_constant_unchecked()?,
@@ -42,7 +43,7 @@ pub mod prelude {
 ///
 /// let mut cs = TestConstraintSystem::<Bn256>::new();
 ///
-/// let c: Scalar<Bn256> = auto_const!(arithmetic::mul, cs.namespace(|| "mul"), &a, &b).unwrap();
+/// let c: Scalar<Bn256> = auto_const!(arithmetic::mul, cs.ns(|| "mul"), &a, &b).unwrap();
 ///
 /// assert!(c.is_constant());
 ///

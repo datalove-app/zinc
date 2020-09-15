@@ -1,14 +1,14 @@
 use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
-use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Slice;
 
-impl<E, CS> VMInstruction<E, CS> for Slice
+impl<F, CS> VMInstruction<F, CS> for Slice
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let offset = vm.pop()?.value()?;
 
         let mut array = Vec::with_capacity(self.array_len);

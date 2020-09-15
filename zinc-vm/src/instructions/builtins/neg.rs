@@ -1,23 +1,20 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
+use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::gadgets;
-use crate::Engine;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Neg;
 use zinc_bytecode::scalar::ScalarType;
 
-impl<E, CS> VMInstruction<E, CS> for Neg
+impl<F, CS> VMInstruction<F, CS> for Neg
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let value = vm.pop()?.value()?;
 
         let cs = vm.constraint_system();
-        let unchecked_neg = gadgets::neg(cs.namespace(|| "unchecked_neg"), &value)?;
+        let unchecked_neg = gadgets::neg(cs.ns(|| "unchecked_neg"), &value)?;
 
         match value.get_type() {
             ScalarType::Integer(mut int_type) => {
@@ -25,7 +22,7 @@ where
                 let cs = vm.constraint_system();
                 int_type.is_signed = true;
                 let neg = gadgets::types::conditional_type_check(
-                    cs.namespace(|| "neg"),
+                    cs.ns(|| "neg"),
                     &condition,
                     &unchecked_neg,
                     int_type.into(),

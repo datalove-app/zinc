@@ -4,31 +4,31 @@ use crate::core::Cell;
 use crate::errors::MalformedBytecode;
 use crate::gadgets;
 use crate::gadgets::{Gadgets, Scalar};
-use crate::Engine;
 use crate::RuntimeError;
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use std::fmt;
 
 #[derive(Debug)]
-struct CellDelta<E: Engine> {
-    old: Option<Cell<E>>,
-    new: Cell<E>,
+struct CellDelta<F: Field> {
+    old: Option<Cell<F>>,
+    new: Cell<F>,
 }
 
-type DataStackDelta<E> = BTreeMap<usize, CellDelta<E>>;
+type DataStackDelta<F> = BTreeMap<usize, CellDelta<F>>;
 
 #[derive(Debug)]
-enum DataStackBranch<E: Engine> {
-    IfThen(DataStackDelta<E>),
-    IfThenElse(DataStackDelta<E>, DataStackDelta<E>),
+enum DataStackBranch<F: Field> {
+    IfThen(DataStackDelta<F>),
+    IfThenElse(DataStackDelta<F>, DataStackDelta<F>),
 }
 
-impl<E: Engine> DataStackBranch<E> {
+impl<F: Field> DataStackBranch<F> {
     fn new() -> Self {
         DataStackBranch::IfThen(DataStackDelta::new())
     }
 
-    fn active_delta(&mut self) -> &mut DataStackDelta<E> {
+    fn active_delta(&mut self) -> &mut DataStackDelta<F> {
         match self {
             DataStackBranch::IfThen(t) => t,
             DataStackBranch::IfThenElse(_, e) => e,
@@ -46,12 +46,12 @@ impl<E: Engine> DataStackBranch<E> {
 }
 
 #[derive(Debug)]
-pub struct DataStack<E: Engine> {
-    memory: Vec<Option<Cell<E>>>,
-    branches: Vec<DataStackBranch<E>>,
+pub struct DataStack<F: Field> {
+    memory: Vec<Option<Cell<F>>>,
+    branches: Vec<DataStackBranch<F>>,
 }
 
-impl<E: Engine> DataStack<E> {
+impl<F: Field> DataStack<F> {
     pub fn new() -> Self {
         Self {
             memory: Vec::new(),
@@ -59,7 +59,7 @@ impl<E: Engine> DataStack<E> {
         }
     }
 
-    pub fn get(&mut self, address: usize) -> Result<Cell<E>, RuntimeError> {
+    pub fn get(&mut self, address: usize) -> Result<Cell<F>, RuntimeError> {
         if let Some(cell) = self.memory.get(address) {
             cell.clone()
                 .ok_or_else(|| MalformedBytecode::UninitializedStorageAccess.into())
@@ -68,7 +68,7 @@ impl<E: Engine> DataStack<E> {
         }
     }
 
-    pub fn set(&mut self, address: usize, value: Cell<E>) -> Result<(), RuntimeError> {
+    pub fn set(&mut self, address: usize, value: Cell<F>) -> Result<(), RuntimeError> {
         if self.memory.len() <= address {
             let mut extra = vec![None; address + 1 - self.memory.len()];
             self.memory.append(&mut extra);
@@ -112,10 +112,10 @@ impl<E: Engine> DataStack<E> {
     }
 
     /// Merge top-level branch or branches into parent branch.
-    pub fn merge<CS: ConstraintSystem<E>>(
+    pub fn merge<CS: ConstraintSystem<F>>(
         &mut self,
-        condition: Scalar<E>,
-        ops: &mut Gadgets<E, CS>,
+        condition: Scalar<F>,
+        ops: &mut Gadgets<F, CS>,
     ) -> Result<(), RuntimeError> {
         let mut branch = self
             .branches
@@ -131,18 +131,18 @@ impl<E: Engine> DataStack<E> {
         Ok(())
     }
 
-    fn revert(&mut self, delta: &DataStackDelta<E>) {
+    fn revert(&mut self, delta: &DataStackDelta<F>) {
         for (address, d) in delta.iter() {
             self.memory[*address] = d.old.clone();
         }
     }
 
     /// Conditionally apply delta
-    fn merge_single<CS: ConstraintSystem<E>>(
+    fn merge_single<CS: ConstraintSystem<F>>(
         &mut self,
-        condition: Scalar<E>,
-        delta: &DataStackDelta<E>,
-        ops: &mut Gadgets<E, CS>,
+        condition: Scalar<F>,
+        delta: &DataStackDelta<F>,
+        ops: &mut Gadgets<F, CS>,
     ) -> Result<(), RuntimeError> {
         for (&addr, diff) in delta.iter() {
             match (&self.memory[addr], &diff.new) {
@@ -150,7 +150,7 @@ impl<E: Engine> DataStack<E> {
                 (Some(Cell::Value(old)), Cell::Value(new)) => {
                     let cs = ops
                         .constraint_system()
-                        .namespace(|| format!("merge address {}", addr));
+                        .ns(|| format!("merge address {}", addr));
                     let value = gadgets::conditional_select(cs, &condition, new, old)?;
                     self.set(addr, Cell::Value(value))?;
                 }
@@ -163,13 +163,13 @@ impl<E: Engine> DataStack<E> {
     /// Conditionally apply one of two deltas.
     fn merge_pair<CS>(
         &mut self,
-        condition: Scalar<E>,
-        delta_then: &DataStackDelta<E>,
-        delta_else: &DataStackDelta<E>,
-        ops: &mut Gadgets<E, CS>,
+        condition: Scalar<F>,
+        delta_then: &DataStackDelta<F>,
+        delta_else: &DataStackDelta<F>,
+        ops: &mut Gadgets<F, CS>,
     ) -> Result<(), RuntimeError>
     where
-        CS: ConstraintSystem<E>,
+        CS: ConstraintSystem<F>,
     {
         for (addr, diff) in delta_then.iter() {
             let alt = if let Some(diff) = delta_else.get(addr) {
@@ -183,7 +183,7 @@ impl<E: Engine> DataStack<E> {
                 (Some(Cell::Value(old)), Cell::Value(new)) => {
                     let cs = ops
                         .constraint_system()
-                        .namespace(|| format!("merge address {}", addr));
+                        .ns(|| format!("merge address {}", addr));
                     let value = gadgets::conditional_select(cs, &condition, new, old)?;
                     self.set(*addr, Cell::Value(value))?;
                 }
@@ -204,7 +204,7 @@ mod tests {
     use super::*;
     use franklin_crypto::circuit::test::TestConstraintSystem;
 
-    fn assert_cell_eq<E: Engine>(cell: Cell<E>, value: BigInt) {
+    fn assert_cell_eq<F: Field>(cell: Cell<F>, value: BigInt) {
         let Cell::Value(v) = cell;
         assert_eq!(v.to_bigint().unwrap(), value);
     }
@@ -263,7 +263,7 @@ mod tests {
     }
 }
 
-impl<E: Engine> fmt::Display for DataStack<E> {
+impl<F: Field> fmt::Display for DataStack<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Data Stack:")?;
 

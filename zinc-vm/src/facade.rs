@@ -1,22 +1,18 @@
-use std::fmt::Debug;
-
-use bellman::groth16;
-use bellman::pairing::bn256::Bn256;
-use franklin_crypto::bellman::groth16::{Parameters, Proof, VerifyingKey};
-use franklin_crypto::bellman::{Circuit, ConstraintSystem, SynthesisError};
-use num_bigint::BigInt;
-use rand::ThreadRng;
-
-use zinc_bytecode::program::Program;
-
 use crate::constraint_systems::{DebugConstraintSystem, DuplicateRemovingCS};
 use crate::core::VirtualMachine;
 pub use crate::errors::{MalformedBytecode, Result, RuntimeError, TypeSizeError};
 use crate::gadgets::utils::bigint_to_fr;
-use crate::Engine;
+use algebra::{prelude::PairingEngine, Field};
 use failure::Fail;
-use franklin_crypto::circuit::test::TestConstraintSystem;
+use groth16::{Parameters, Proof, VerifyingKey};
+// use bellman::pairing::bn256::Bn256;
+use num_bigint::BigInt;
+use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+use r1cs_std::test_constraint_system::TestConstraintSystem;
+use rand::ThreadRng;
+use std::fmt::Debug;
 use zinc_bytecode::data::values::Value;
+use zinc_bytecode::program::Program;
 
 struct VMCircuit<'a> {
     program: &'a Program,
@@ -24,20 +20,20 @@ struct VMCircuit<'a> {
     result: &'a mut Option<Result<Vec<Option<BigInt>>>>,
 }
 
-impl<E: Engine> Circuit<E> for VMCircuit<'_> {
-    fn synthesize<CS: ConstraintSystem<E>>(
+impl<F: Field> ConstraintSynthesizer<F> for VMCircuit<'_> {
+    fn generate_constraints<CS: ConstraintSystem<F>>(
         self,
         cs: &mut CS,
     ) -> std::result::Result<(), SynthesisError> {
-        // let cs = LoggingConstraintSystem::new(cs.namespace(|| "logging"));
-        let cs = DuplicateRemovingCS::new(cs.namespace(|| "duplicates removing"));
+        // let cs = LoggingConstraintSystem::new(cs.ns(|| "logging"));
+        let cs = DuplicateRemovingCS::new(cs.ns(|| "duplicates removing"));
         let mut vm = VirtualMachine::new(cs, false);
         *self.result = Some(vm.run(self.program, self.inputs, |_| {}, |_| Ok(())));
         Ok(())
     }
 }
 
-pub fn run<E: Engine>(program: &Program, inputs: &Value) -> Result<Value> {
+pub fn run<E: PairingEngine>(program: &Program, inputs: &Value) -> Result<Value> {
     let cs = DebugConstraintSystem::<Bn256>::default();
     let mut vm = VirtualMachine::new(cs, true);
 
@@ -81,7 +77,7 @@ pub fn run<E: Engine>(program: &Program, inputs: &Value) -> Result<Value> {
     Ok(value)
 }
 
-pub fn debug<E: Engine>(program: &Program, inputs: &Value) -> Result<Value> {
+pub fn debug<E: PairingEngine>(program: &Program, inputs: &Value) -> Result<Value> {
     let cs = TestConstraintSystem::<Bn256>::new();
     let mut vm = VirtualMachine::new(cs, true);
 
@@ -137,7 +133,7 @@ pub fn debug<E: Engine>(program: &Program, inputs: &Value) -> Result<Value> {
     Ok(value)
 }
 
-pub fn setup<E: Engine>(program: &Program) -> Result<Parameters<E>> {
+pub fn setup<E: PairingEngine>(program: &Program) -> Result<Parameters<E>> {
     let rng = &mut rand::thread_rng();
     let mut result = None;
     let circuit = VMCircuit {
@@ -154,7 +150,7 @@ pub fn setup<E: Engine>(program: &Program) -> Result<Parameters<E>> {
     }
 }
 
-pub fn prove<E: Engine>(
+pub fn prove<E: PairingEngine>(
     program: &Program,
     params: &Parameters<E>,
     witness: &Value,
@@ -212,7 +208,7 @@ pub enum VerificationError {
     SynthesisError(SynthesisError),
 }
 
-pub fn verify<E: Engine>(
+pub fn verify<E: PairingEngine>(
     key: &VerifyingKey<E>,
     proof: &Proof<E>,
     public_input: &Value,

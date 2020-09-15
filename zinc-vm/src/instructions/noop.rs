@@ -1,16 +1,14 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{RuntimeError, VMInstruction, VirtualMachine};
-use crate::Engine;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::NoOperation;
 
-impl<E, CS> VMInstruction<E, CS> for NoOperation
+impl<F, CS> VMInstruction<F, CS> for NoOperation
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, _vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, _vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         Ok(())
     }
 }

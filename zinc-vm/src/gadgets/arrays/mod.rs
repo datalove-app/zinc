@@ -1,20 +1,21 @@
 use crate::gadgets;
 use crate::gadgets::utils::math;
 use crate::gadgets::Scalar;
-use crate::{Engine, Result};
-use bellman::ConstraintSystem;
+use crate::Result;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 
 /// Select single value from array based on index bits.
 ///
 /// **Note**: index bits are in **big-endian**.
-pub fn recursive_select<E, CS>(
+pub fn recursive_select<F, CS>(
     mut cs: CS,
-    index_bits_be: &[Scalar<E>],
-    array: &[Scalar<E>],
-) -> Result<Scalar<E>>
+    index_bits_be: &[Scalar<F>],
+    array: &[Scalar<F>],
+) -> Result<Scalar<F>>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     assert!(!array.is_empty(), "internal error in recursive_select 1");
 
@@ -33,15 +34,15 @@ where
 
     let half = math::floor_to_power_of_two(array.len() - 1);
     let left = recursive_select(
-        cs.namespace(|| "left recursion"),
+        cs.ns(|| "left recursion"),
         &index_bits_be[1..],
         &array[..half],
     )?;
     let right = recursive_select(
-        cs.namespace(|| "right recursion"),
+        cs.ns(|| "right recursion"),
         &index_bits_be[1..],
         &array[half..],
     )?;
 
-    gadgets::conditional_select(cs.namespace(|| "select"), &index_bits_be[0], &right, &left)
+    gadgets::conditional_select(cs.ns(|| "select"), &index_bits_be[0], &right, &left)
 }

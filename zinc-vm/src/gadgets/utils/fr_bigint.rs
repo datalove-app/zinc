@@ -1,10 +1,12 @@
-use crate::Engine;
-use ff::{Field, PrimeField, PrimeFieldRepr};
+use algebra::{BigInteger, Field, FpParameters, PrimeField};
 use num_bigint::{BigInt, Sign};
 use num_traits::Signed;
-use std::ops::{Div, Neg};
+use std::{
+    ops::{Div, Neg},
+    str::FromStr,
+};
 
-pub fn fr_to_bigint<Fr: PrimeField>(fr: &Fr, signed: bool) -> BigInt {
+pub fn fr_to_bigint<F: PrimeField>(fr: &F, signed: bool) -> BigInt {
     if signed {
         fr_to_bigint_signed(fr)
     } else {
@@ -12,9 +14,9 @@ pub fn fr_to_bigint<Fr: PrimeField>(fr: &Fr, signed: bool) -> BigInt {
     }
 }
 
-pub fn fr_to_bigint_signed<Fr: PrimeField>(fr: &Fr) -> BigInt {
+pub fn fr_to_bigint_signed<F: PrimeField>(fr: &F) -> BigInt {
     let mut buffer = Vec::<u8>::new();
-    Fr::char()
+    F::Params::MODULUS
         .write_be(&mut buffer)
         .expect("failed to write into Vec<u8>");
     let modulus = BigInt::from_bytes_be(Sign::Plus, &buffer);
@@ -32,20 +34,22 @@ pub fn fr_to_bigint_signed<Fr: PrimeField>(fr: &Fr) -> BigInt {
     }
 }
 
-pub fn fr_to_bigint_unsigned<Fr: PrimeField>(fr: &Fr) -> BigInt {
+pub fn fr_to_bigint_unsigned<F: PrimeField>(fr: &F) -> BigInt {
     let mut buffer = Vec::<u8>::new();
     fr.into_repr()
-        .write_be(&mut buffer)
+        .write_le(&mut buffer)
         .expect("failed to write into Vec<u8>");
-    BigInt::from_bytes_be(Sign::Plus, &buffer)
+    BigInt::from_bytes_le(Sign::Plus, &buffer)
 }
 
-pub fn bigint_to_fr<E: Engine>(bigint: &BigInt) -> Option<E::Fr> {
+pub fn bigint_to_fr<F: PrimeField>(bigint: &BigInt) -> Option<F> {
     if bigint.is_positive() {
-        E::Fr::from_str(&bigint.to_str_radix(10))
+        let (_, bytes) = bigint.to_bytes_le();
+        F::BigInt::from_bytes(&bytes).ok()
     } else {
-        let abs = E::Fr::from_str(&bigint.neg().to_str_radix(10))?;
-        let mut fr = E::Fr::zero();
+        let (_, bytes) = bigint.neg().to_bytes_le();
+        let abs = F::BigInt::from_bytes(&bytes).ok()?;
+        let mut fr = F::zero();
         fr.sub_assign(&abs);
         Some(fr)
     }
@@ -54,8 +58,9 @@ pub fn bigint_to_fr<E: Engine>(bigint: &BigInt) -> Option<E::Fr> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bellman::pairing::bn256::{Bn256, Fr};
+    use algebra::jubjub::fields::Fr;
     use num_traits::ToPrimitive;
+    use std::str::FromStr;
 
     #[test]
     fn test_fr_to_bigint() {
@@ -74,7 +79,7 @@ mod test {
 
         for &v in values.iter() {
             let bigint = BigInt::from(v);
-            let fr = bigint_to_fr::<Bn256>(&bigint);
+            let fr = bigint_to_fr(&bigint);
             assert_eq!(fr, Fr::from_str(&v.to_string()));
         }
     }
@@ -85,7 +90,7 @@ mod test {
 
         for &v in values.iter() {
             let expected = BigInt::from(v);
-            let fr = bigint_to_fr::<Bn256>(&expected).expect("bigint_to_fr");
+            let fr = bigint_to_fr(&expected).expect("bigint_to_fr");
             let actual = fr_to_bigint(&fr, true);
             assert_eq!(actual, expected);
         }

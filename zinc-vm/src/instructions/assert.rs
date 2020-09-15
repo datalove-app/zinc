@@ -1,21 +1,20 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
-use crate::{gadgets, Engine};
+use crate::gadgets;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Assert;
 
-impl<E, CS> VMInstruction<E, CS> for Assert
+impl<F, CS> VMInstruction<F, CS> for Assert
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let value = vm.pop()?.value()?;
         let c = vm.condition_top()?;
         let cs = vm.constraint_system();
-        let not_c = gadgets::not(cs.namespace(|| "not"), &c)?;
+        let not_c = gadgets::not(cs.ns(|| "not"), &c)?;
         let cond_value = vm.operations().or(value, not_c)?;
         let message = match &self.message {
             Some(m) => Some(m.as_str()),

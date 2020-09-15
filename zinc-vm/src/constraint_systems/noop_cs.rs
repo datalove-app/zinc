@@ -1,39 +1,38 @@
-use franklin_crypto::bellman::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
-
-use crate::Engine;
+use algebra::Field;
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 
 pub struct ConstantCS;
 
-impl<E: Engine> ConstraintSystem<E> for ConstantCS {
+impl<F: Field> ConstraintSystem<F> for ConstantCS {
     type Root = Self;
 
-    fn alloc<F, A, AR>(&mut self, _annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc<FF, A, AR>(&mut self, _annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
         f()?;
-        Ok(<Self as ConstraintSystem<E>>::one())
+        Ok(<Self as ConstraintSystem<F>>::one())
     }
 
-    fn alloc_input<F, A, AR>(&mut self, _annotation: A, f: F) -> Result<Variable, SynthesisError>
+    fn alloc_input<FF, A, AR>(&mut self, _annotation: A, f: FF) -> Result<Variable, SynthesisError>
     where
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
+        FF: FnOnce() -> Result<F, SynthesisError>,
         A: FnOnce() -> AR,
         AR: Into<String>,
     {
         f()?;
-        Ok(<Self as ConstraintSystem<E>>::one())
+        Ok(<Self as ConstraintSystem<F>>::one())
     }
 
     fn enforce<A, AR, LA, LB, LC>(&mut self, _annotation: A, _a: LA, _b: LB, _c: LC)
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LB: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
+        LC: FnOnce(LinearCombination<F>) -> LinearCombination<F>,
     {
     }
 
@@ -48,5 +47,9 @@ impl<E: Engine> ConstraintSystem<E> for ConstantCS {
 
     fn get_root(&mut self) -> &mut Self::Root {
         self
+    }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
     }
 }

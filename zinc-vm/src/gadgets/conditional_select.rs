@@ -1,18 +1,18 @@
-use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant};
-use crate::{Engine, Result};
-use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
-use franklin_crypto::circuit::num::AllocatedNum;
+use crate::gadgets::{AllocatedNum, Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant};
+use crate::Result;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
+use r1cs_std::alloc::AllocGadget;
 
-pub fn conditional_select<E, CS>(
+pub fn conditional_select<F, CS>(
     mut cs: CS,
-    condition: &Scalar<E>,
-    if_true: &Scalar<E>,
-    if_false: &Scalar<E>,
-) -> Result<Scalar<E>>
+    condition: &Scalar<F>,
+    if_true: &Scalar<F>,
+    if_false: &Scalar<F>,
+) -> Result<Scalar<F>>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     condition.get_type().assert_type(ScalarType::Boolean)?;
     let scalar_type = ScalarType::expect_same(if_true.get_type(), if_false.get_type())?;
@@ -26,7 +26,7 @@ where
             }
         }
         ScalarVariant::Variable(_) => {
-            let num = AllocatedNum::alloc(cs.namespace(|| "selected"), || {
+            let num = AllocatedNum::alloc(cs.ns(|| "selected"), || {
                 if !condition.grab_value()?.is_zero() {
                     if_true.grab_value()
                 } else {

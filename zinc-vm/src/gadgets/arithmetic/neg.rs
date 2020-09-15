@@ -1,22 +1,22 @@
 use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
-use crate::gadgets::Scalar;
-use crate::{Engine, Result};
-use franklin_crypto::bellman::ConstraintSystem;
-use franklin_crypto::circuit::expression::Expression;
+use crate::gadgets::{Expression, Scalar};
+use crate::Result;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 
-pub fn neg<E, CS>(cs: CS, scalar: &Scalar<E>) -> Result<Scalar<E>>
+pub fn neg<F, CS>(cs: CS, scalar: &Scalar<F>) -> Result<Scalar<F>>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn inner<E, CS>(mut cs: CS, scalar: &Scalar<E>) -> Result<Scalar<E>>
+    fn inner<F, CS>(mut cs: CS, scalar: &Scalar<F>) -> Result<Scalar<F>>
     where
-        E: Engine,
-        CS: ConstraintSystem<E>,
+        F: Field,
+        CS: ConstraintSystem<F>,
     {
         let expr = Expression::u64::<CS>(0) - scalar.to_expression::<CS>();
-        let num = expr.into_number(cs.namespace(|| "into_number"))?;
+        let num = expr.into_number(cs.ns(|| "into_number"))?;
         Ok(num.into())
     }
 

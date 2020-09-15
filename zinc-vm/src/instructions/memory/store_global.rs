@@ -1,15 +1,15 @@
 use crate::core::{InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
-use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::StoreGlobal;
 
-impl<E, CS> VMInstruction<E, CS> for StoreGlobal
+impl<F, CS> VMInstruction<F, CS> for StoreGlobal
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         let value = vm.pop()?;
         vm.store_global(self.address, value)
     }

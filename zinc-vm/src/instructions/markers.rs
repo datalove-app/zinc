@@ -1,15 +1,14 @@
-use crate::core::location::CodeLocation;
-use crate::core::{VMInstruction, VirtualMachine};
-use crate::{Engine, RuntimeError};
-use franklin_crypto::bellman::ConstraintSystem;
+use crate::core::{location::CodeLocation, RuntimeError, VMInstruction, VirtualMachine};
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::*;
 
-impl<E, CS> VMInstruction<E, CS> for FileMarker
+impl<F, CS> VMInstruction<F, CS> for FileMarker
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.location = CodeLocation {
             file: Some(self.file.clone()),
             function: None,
@@ -21,34 +20,34 @@ where
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for FunctionMarker
+impl<F, CS> VMInstruction<F, CS> for FunctionMarker
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.location.function = Some(self.function.clone());
         Ok(())
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for LineMarker
+impl<F, CS> VMInstruction<F, CS> for LineMarker
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.location.line = Some(self.line);
         Ok(())
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for ColumnMarker
+impl<F, CS> VMInstruction<F, CS> for ColumnMarker
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.location.column = Some(self.column);
         Ok(())
     }

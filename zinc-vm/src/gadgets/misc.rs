@@ -1,30 +1,27 @@
-use std::marker::PhantomData;
-use std::mem;
-
-use bellman::{ConstraintSystem, Namespace};
-use ff::Field;
+use crate::gadgets::{
+    self, utils, Expression, Gadget, Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant,
+};
+use crate::RuntimeError;
+use algebra::Field;
 use num_bigint::BigInt;
+use r1cs_core::{ConstraintSystem, Namespace, SynthesisError};
+use r1cs_std::Assignment;
+use std::{marker::PhantomData, mem};
 
-use crate::core::RuntimeError;
-use crate::gadgets::{utils, Gadget, Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant};
-use crate::{gadgets, Engine};
-use franklin_crypto::circuit::expression::Expression;
-use franklin_crypto::circuit::Assignment;
-
-pub struct Gadgets<E, CS>
+pub struct Gadgets<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     cs: CS,
     counter: usize,
-    pd: PhantomData<E>,
+    pd: PhantomData<F>,
 }
 
-impl<E, CS> Gadgets<E, CS>
+impl<F, CS> Gadgets<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     pub fn new(cs: CS) -> Self {
         Self {
@@ -34,10 +31,10 @@ where
         }
     }
 
-    fn cs_namespace(&mut self) -> Namespace<E, CS::Root> {
+    fn cs_namespace(&mut self) -> Namespace<F, CS::Root> {
         let s = format!("{}", self.counter);
         self.counter += 1;
-        self.cs.namespace(|| s)
+        self.cs.ns(|| s)
     }
 
     #[allow(dead_code)]
@@ -46,32 +43,35 @@ where
     }
 }
 
-impl<E, CS> Gadgets<E, CS>
+impl<F, CS> Gadgets<F, CS>
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
     fn witness_fr(
         &mut self,
-        value: Option<E::Fr>,
+        value: Option<F>,
         scalar_type: ScalarType,
-    ) -> Result<Scalar<E>, RuntimeError> {
+    ) -> Result<Scalar<F>, RuntimeError> {
         let mut cs = self.cs_namespace();
 
-        let variable = cs.alloc(|| "variable", || value.grab())?;
+        let variable = cs.alloc(
+            || "variable",
+            || value.ok_or(SynthesisError::AssignmentMissing),
+        )?;
         let scalar = Scalar::new_unchecked_variable(value, variable, scalar_type);
 
         match scalar_type {
             ScalarType::Field => {
                 // Create some constraints to avoid unconstrained variable errors.
-                let one = Scalar::new_constant_fr(E::Fr::one(), ScalarType::Field);
-                gadgets::arithmetic::add(cs.namespace(|| "dummy constraint"), &scalar, &one)?;
+                let one = Scalar::new_constant_fr(F::one(), ScalarType::Field);
+                gadgets::arithmetic::add(cs.ns(|| "dummy constraint"), &scalar, &one)?;
                 Ok(scalar)
             }
             _ => {
-                let condition = Scalar::new_constant_fr(E::Fr::one(), ScalarType::Boolean);
+                let condition = Scalar::new_constant_fr(F::one(), ScalarType::Boolean);
                 gadgets::types::conditional_type_check(
-                    cs.namespace(|| "type check"),
+                    cs.ns(|| "type check"),
                     &condition,
                     &scalar,
                     scalar_type,
@@ -84,10 +84,10 @@ where
         &mut self,
         value: Option<&BigInt>,
         scalar_type: ScalarType,
-    ) -> Result<Scalar<E>, RuntimeError> {
+    ) -> Result<Scalar<F>, RuntimeError> {
         let fr = if let Some(bigint) = value {
             Some(
-                utils::bigint_to_fr::<E>(bigint).ok_or(RuntimeError::ValueOverflow {
+                utils::bigint_to_fr::<F>(bigint).ok_or(RuntimeError::ValueOverflow {
                     value: bigint.clone(),
                     scalar_type,
                 })?,
@@ -103,8 +103,8 @@ where
         &self,
         value: &BigInt,
         scalar_type: ScalarType,
-    ) -> Result<Scalar<E>, RuntimeError> {
-        let value = utils::bigint_to_fr::<E>(value).ok_or_else(|| RuntimeError::ValueOverflow {
+    ) -> Result<Scalar<F>, RuntimeError> {
+        let value = utils::bigint_to_fr::<F>(value).ok_or_else(|| RuntimeError::ValueOverflow {
             value: value.clone(),
             scalar_type,
         })?;
@@ -112,7 +112,7 @@ where
         Ok(Scalar::new_constant_fr(value, scalar_type))
     }
 
-    pub fn output(&mut self, element: Scalar<E>) -> Result<Scalar<E>, RuntimeError> {
+    pub fn output(&mut self, element: Scalar<F>) -> Result<Scalar<F>, RuntimeError> {
         let mut cs = self.cs_namespace();
 
         let variable = cs
@@ -133,7 +133,7 @@ where
         ))
     }
 
-    pub fn and(&mut self, left: Scalar<E>, right: Scalar<E>) -> Result<Scalar<E>, RuntimeError> {
+    pub fn and(&mut self, left: Scalar<F>, right: Scalar<F>) -> Result<Scalar<F>, RuntimeError> {
         left.get_type().assert_type(ScalarType::Boolean)?;
         right.get_type().assert_type(ScalarType::Boolean)?;
 
@@ -149,7 +149,7 @@ where
         };
 
         let variable = cs
-            .alloc(|| "and", || value.grab())
+            .alloc(|| "and", || value.ok_or(SynthesisError::AssignmentMissing))
             .map_err(RuntimeError::SynthesisError)?;
 
         cs.enforce(
@@ -166,7 +166,7 @@ where
         ))
     }
 
-    pub fn or(&mut self, left: Scalar<E>, right: Scalar<E>) -> Result<Scalar<E>, RuntimeError> {
+    pub fn or(&mut self, left: Scalar<F>, right: Scalar<F>) -> Result<Scalar<F>, RuntimeError> {
         left.get_type().assert_type(ScalarType::Boolean)?;
         right.get_type().assert_type(ScalarType::Boolean)?;
 
@@ -175,16 +175,16 @@ where
         let value = match (left.get_value(), right.get_value()) {
             (Some(a), Some(b)) => {
                 if a.is_zero() && b.is_zero() {
-                    Some(E::Fr::zero())
+                    Some(F::zero())
                 } else {
-                    Some(E::Fr::one())
+                    Some(F::one())
                 }
             }
             _ => None,
         };
 
         let variable = cs
-            .alloc(|| "or", || value.grab())
+            .alloc(|| "or", || value.ok_or(SynthesisError::AssignmentMissing))
             .map_err(RuntimeError::SynthesisError)?;
 
         cs.enforce(
@@ -201,7 +201,7 @@ where
         ))
     }
 
-    pub fn xor(&mut self, left: Scalar<E>, right: Scalar<E>) -> Result<Scalar<E>, RuntimeError> {
+    pub fn xor(&mut self, left: Scalar<F>, right: Scalar<F>) -> Result<Scalar<F>, RuntimeError> {
         left.get_type().assert_type(ScalarType::Boolean)?;
         right.get_type().assert_type(ScalarType::Boolean)?;
 
@@ -210,16 +210,19 @@ where
         let value = match (left.get_value(), right.get_value()) {
             (Some(a), Some(b)) => {
                 if a.is_zero() == b.is_zero() {
-                    Some(E::Fr::zero())
+                    Some(F::zero())
                 } else {
-                    Some(E::Fr::one())
+                    Some(F::one())
                 }
             }
             _ => None,
         };
 
         let variable = cs
-            .alloc(|| "conjunction", || value.grab())
+            .alloc(
+                || "conjunction",
+                || value.ok_or(SynthesisError::AssignmentMissing),
+            )
             .map_err(RuntimeError::SynthesisError)?;
 
         // (a + a) * (b) = (a + b - c)
@@ -237,7 +240,7 @@ where
         ))
     }
 
-    pub fn eq(&mut self, left: Scalar<E>, right: Scalar<E>) -> Result<Scalar<E>, RuntimeError> {
+    pub fn eq(&mut self, left: Scalar<F>, right: Scalar<F>) -> Result<Scalar<F>, RuntimeError> {
         let cs = self.cs_namespace();
 
         let l_num = left.to_expression::<CS>();
@@ -246,7 +249,7 @@ where
         let eq = Expression::equals(cs, l_num, r_num)?;
 
         Ok(Scalar::new_unchecked_variable(
-            eq.get_value_field::<E>(),
+            eq.get_value_field::<F>(),
             eq.get_variable(),
             ScalarType::Boolean,
         ))
@@ -254,7 +257,7 @@ where
 
     pub fn assert(
         &mut self,
-        element: Scalar<E>,
+        element: Scalar<F>,
         message: Option<&str>,
     ) -> Result<(), RuntimeError> {
         if let Some(value) = element.get_value() {
@@ -266,11 +269,14 @@ where
 
         let inverse_value = element
             .get_value()
-            .map(|fr| fr.inverse().unwrap_or_else(E::Fr::zero));
+            .map(|fr| fr.inverse().unwrap_or_else(F::zero));
 
         let mut cs = self.cs_namespace();
         let inverse_variable = cs
-            .alloc(|| "inverse", || inverse_value.grab())
+            .alloc(
+                || "inverse",
+                || inverse_value.ok_or(SynthesisError::AssignmentMissing),
+            )
             .map_err(RuntimeError::SynthesisError)?;
 
         cs.enforce(
@@ -286,10 +292,10 @@ where
     /// This gadget only enforces 0 <= index < array.len() if condition is true
     pub fn conditional_array_get(
         &mut self,
-        _condition: &Scalar<E>,
-        array: &[Scalar<E>],
-        index: &Scalar<E>,
-    ) -> Result<Scalar<E>, RuntimeError> {
+        _condition: &Scalar<F>,
+        array: &[Scalar<F>],
+        index: &Scalar<F>,
+    ) -> Result<Scalar<F>, RuntimeError> {
         if !index.is_constant() {
             return Err(RuntimeError::WitnessArrayIndex);
         }
@@ -301,15 +307,15 @@ where
     /// This gadget enforces 0 <= index < array.len()
     pub fn enforcing_array_get(
         &mut self,
-        array: &[Scalar<E>],
-        index: &Scalar<E>,
-    ) -> Result<Scalar<E>, RuntimeError> {
+        array: &[Scalar<F>],
+        index: &Scalar<F>,
+    ) -> Result<Scalar<F>, RuntimeError> {
         let mut cs = self.cs_namespace();
 
         assert!(!array.is_empty(), "reading from empty array");
 
         let length = Scalar::new_constant_bigint(&array.len().into(), index.get_type())?;
-        let lt = gadgets::comparison::lt(cs.namespace(|| "cs"), index, &length)?;
+        let lt = gadgets::comparison::lt(cs.ns(|| "cs"), index, &length)?;
         mem::drop(cs);
         self.assert(lt, Some("index out of bounds"))?;
 
@@ -330,7 +336,7 @@ where
                 // let mut cs = self.cs_namespace();
                 // let num_bits = math::log2ceil(array.len());
                 // let bits_le = index.to_expression::<CS>().into_bits_le_fixed(
-                //     cs.namespace(|| "into_bits"),
+                //     cs.ns(|| "into_bits"),
                 //     num_bits
                 // )?;
                 // let bits_be = bits_le
@@ -338,12 +344,12 @@ where
                 //     .rev()
                 //     .enumerate()
                 //     .map(|(i, bit)| {
-                //         Scalar::from_boolean(cs.namespace(|| format!("bit {}", i)), bit)
+                //         Scalar::from_boolean(cs.ns(|| format!("bit {}", i)), bit)
                 //     })
-                //     .collect::<Result<Vec<Scalar<E>>, RuntimeError>>()?;
+                //     .collect::<Result<Vec<Scalar<F>>, RuntimeError>>()?;
 
                 // gadgets::recursive_select(
-                //     cs.namespace(|| "recursive_select"),
+                //     cs.ns(|| "recursive_select"),
                 //     &bits_be,
                 //     array
                 // )
@@ -353,10 +359,10 @@ where
 
     pub fn array_set(
         &mut self,
-        array: &[Scalar<E>],
-        index: Scalar<E>,
-        value: Scalar<E>,
-    ) -> Result<Vec<Scalar<E>>, RuntimeError> {
+        array: &[Scalar<F>],
+        index: Scalar<F>,
+        value: Scalar<F>,
+    ) -> Result<Vec<Scalar<F>>, RuntimeError> {
         let mut new_array = Vec::from(array);
 
         match index.get_variant() {
@@ -388,11 +394,11 @@ where
         Ok(new_array)
     }
 
-    pub fn execute<G: Gadget<E>>(
+    pub fn execute<G: Gadget<F>>(
         &mut self,
         gadget: G,
-        input: &[Scalar<E>],
-    ) -> Result<Vec<Scalar<E>>, RuntimeError> {
+        input: &[Scalar<F>],
+    ) -> Result<Vec<Scalar<F>>, RuntimeError> {
         let cs = self.cs_namespace();
         gadget.synthesize_vec(cs, input)
     }

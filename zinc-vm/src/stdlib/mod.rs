@@ -4,9 +4,10 @@ pub mod crypto;
 pub mod ff;
 
 use crate::core::EvaluationStack;
-use crate::{Engine, Result};
-use bellman::ConstraintSystem;
+use crate::Result;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 
-pub trait NativeFunction<E: Engine> {
-    fn execute<CS: ConstraintSystem<E>>(&self, cs: CS, stack: &mut EvaluationStack<E>) -> Result;
+pub trait NativeFunction<F: Field> {
+    fn execute<CS: ConstraintSystem<F>>(&self, cs: CS, stack: &mut EvaluationStack<F>) -> Result;
 }

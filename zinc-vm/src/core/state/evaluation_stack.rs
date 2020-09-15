@@ -2,17 +2,17 @@ use crate::core::Cell;
 use crate::errors::MalformedBytecode;
 use crate::gadgets;
 use crate::gadgets::Scalar;
-use crate::Engine;
 use crate::RuntimeError;
-use franklin_crypto::bellman::ConstraintSystem;
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use std::fmt;
 
 #[derive(Debug)]
-pub struct EvaluationStack<E: Engine> {
-    stack: Vec<Vec<Cell<E>>>,
+pub struct EvaluationStack<F: Field> {
+    stack: Vec<Vec<Cell<F>>>,
 }
 
-impl<E: Engine> EvaluationStack<E> {
+impl<F: Field> EvaluationStack<F> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
@@ -20,7 +20,7 @@ impl<E: Engine> EvaluationStack<E> {
         }
     }
 
-    pub fn push(&mut self, value: Cell<E>) -> Result<(), RuntimeError> {
+    pub fn push(&mut self, value: Cell<F>) -> Result<(), RuntimeError> {
         self.stack
             .last_mut()
             .ok_or_else(|| {
@@ -30,7 +30,7 @@ impl<E: Engine> EvaluationStack<E> {
         Ok(())
     }
 
-    pub fn pop(&mut self) -> Result<Cell<E>, RuntimeError> {
+    pub fn pop(&mut self) -> Result<Cell<F>, RuntimeError> {
         self.stack
             .last_mut()
             .ok_or_else(|| {
@@ -44,9 +44,9 @@ impl<E: Engine> EvaluationStack<E> {
         self.stack.push(vec![]);
     }
 
-    pub fn merge<CS>(&mut self, mut cs: CS, condition: &Scalar<E>) -> Result<(), RuntimeError>
+    pub fn merge<CS>(&mut self, mut cs: CS, condition: &Scalar<F>) -> Result<(), RuntimeError>
     where
-        CS: ConstraintSystem<E>,
+        CS: ConstraintSystem<F>,
     {
         let else_case = self.stack.pop().ok_or_else(|| {
             RuntimeError::InternalError("Evaluation stack root frame missing".into())
@@ -63,7 +63,7 @@ impl<E: Engine> EvaluationStack<E> {
             match (t, e) {
                 (Cell::Value(tv), Cell::Value(ev)) => {
                     let merged = gadgets::conditional_select(
-                        cs.namespace(|| format!("merge {}", i)),
+                        cs.ns(|| format!("merge {}", i)),
                         condition,
                         &tv,
                         &ev,
@@ -82,7 +82,7 @@ impl<E: Engine> EvaluationStack<E> {
     }
 }
 
-impl<E: Engine> fmt::Display for EvaluationStack<E> {
+impl<F: Field> fmt::Display for EvaluationStack<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Evaluation Stack:")?;
 

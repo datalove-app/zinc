@@ -1,37 +1,34 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
-use crate::core::{InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
-use crate::Engine;
+use crate::core::{InternalVM, RuntimeError, VMInstruction, VirtualMachine};
+use algebra::Field;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::{Else, EndIf, If};
 
-impl<E, CS> VMInstruction<E, CS> for If
+impl<F, CS> VMInstruction<F, CS> for If
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.branch_then()
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for Else
+impl<F, CS> VMInstruction<F, CS> for Else
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.branch_else()
     }
 }
 
-impl<E, CS> VMInstruction<E, CS> for EndIf
+impl<F, CS> VMInstruction<F, CS> for EndIf
 where
-    E: Engine,
-    CS: ConstraintSystem<E>,
+    F: Field,
+    CS: ConstraintSystem<F>,
 {
-    fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
+    fn execute(&self, vm: &mut VirtualMachine<F, CS>) -> Result<(), RuntimeError> {
         vm.branch_end()
     }
 }
