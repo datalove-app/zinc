@@ -39,6 +39,7 @@ where
             BuiltinIdentifier::ArrayPad => {
                 vm.call_native(stdlib::array::Pad::new(self.inputs_count)?)
             }
+            _ => todo!(),
         }
     }
 }

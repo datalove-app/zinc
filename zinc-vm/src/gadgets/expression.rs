@@ -50,7 +50,7 @@ impl<E: Engine> Expression<E> {
         let mut coeff = E::Fr::one();
         for bit in le_bits {
             data_from_lc = data_from_lc.add_bool_with_coeff(CS::one(), &bit, coeff);
-            coeff.double();
+            coeff.double_in_place();
         }
         Self::from(&data_from_lc)
     }
@@ -376,8 +376,7 @@ impl<E: Engine> Expression<E> {
 
         for bit in result.iter().rev() {
             packed_lc = packed_lc + (coeff, bit.get_variable());
-
-            coeff.double();
+            coeff.double_in_place();
         }
 
         // ensure packed bits equal to given lc
@@ -407,8 +406,7 @@ impl<E: Engine> Expression<E> {
 
         for bit in bits.iter() {
             packed_lc = packed_lc + (coeff, bit.get_variable());
-
-            coeff.double();
+            coeff.double_in_place();
         }
 
         // ensure packed bits equal to given lc
@@ -461,8 +459,7 @@ impl<E: Engine> Expression<E> {
 
         for bit in bits.iter() {
             packed_lc = packed_lc + (coeff, bit.get_variable());
-
-            coeff.double();
+            coeff.double_in_place();
         }
 
         // ensure packed bits equal to given lc
@@ -499,7 +496,7 @@ impl<E: Engine> Expression<E> {
         let mut coeff = E::Fr::one();
         for bit in bits.into_iter() {
             top_bits_lc = top_bits_lc.add_bool_with_coeff(CS::one(), &bit, coeff);
-            coeff.double();
+            coeff.double_in_place();
         }
 
         // enforce packing and zeroness

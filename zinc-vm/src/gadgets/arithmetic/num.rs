@@ -37,19 +37,19 @@ impl<E: Engine> AllocatedNum<E> {
         })
     }
 
-    pub fn alloc_input<CS, F>(mut cs: CS, value: F) -> Result<Self, SynthesisError>
-    where
-        CS: ConstraintSystem<E::Fr>,
-        F: FnOnce() -> Result<E::Fr, SynthesisError>,
-    {
-        let value = value();
-        let variable = cs.alloc_input(|| "input num", || value)?;
-
-        Ok(AllocatedNum {
-            value: value.ok(),
-            variable,
-        })
-    }
+    // pub fn alloc_input<CS, F>(mut cs: CS, value: F) -> Result<Self, SynthesisError>
+    // where
+    //     CS: ConstraintSystem<E::Fr>,
+    //     F: FnOnce() -> Result<E::Fr, SynthesisError>,
+    // {
+    //     let new_value = value();
+    //     let variable = cs.alloc_input(|| "input num", || new_value)?;
+    //
+    //     Ok(AllocatedNum {
+    //         value: new_value.ok(),
+    //         variable,
+    //     })
+    // }
 
     pub fn inputize<CS>(&self, mut cs: CS) -> Result<(), SynthesisError>
     where
@@ -67,7 +67,7 @@ impl<E: Engine> AllocatedNum<E> {
         Ok(())
     }
 
-    pub fn one<CS>(cs: CS) -> AllocatedNum<E>
+    pub fn one<CS>(_cs: CS) -> AllocatedNum<E>
     where
         CS: ConstraintSystem<E::Fr>,
     {
@@ -117,7 +117,7 @@ impl<E: Engine> AllocatedNum<E> {
             || "squared num",
             || {
                 let mut tmp = self.value.get()?;
-                tmp.square();
+                tmp.square_in_place();
                 value = Some(tmp);
                 Ok(tmp)
             },
@@ -160,7 +160,7 @@ impl<E: Engine> AllocatedNum<E> {
     /// order, requiring that the representation
     /// strictly exists "in the field" (i.e., a
     /// congruency is not allowed.)
-    pub fn into_bits_le_strict<CS>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError>
+    pub fn to_bits_le_strict<CS>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError>
     where
         CS: ConstraintSystem<E::Fr>,
     {
@@ -270,8 +270,7 @@ impl<E: Engine> AllocatedNum<E> {
 
         for bit in result.iter().rev() {
             packed_lc = packed_lc + (coeff, bit.get_variable());
-
-            coeff.double();
+            coeff.double_in_place();
         }
 
         cs.enforce(
@@ -288,7 +287,7 @@ impl<E: Engine> AllocatedNum<E> {
     /// Convert the allocated number into its little-endian representation.
     /// Note that this does not strongly enforce that the commitment is
     /// "in the field."
-    pub fn into_bits_le<CS>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError>
+    pub fn to_bits_le<CS>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError>
     where
         CS: ConstraintSystem<E::Fr>,
     {
@@ -299,8 +298,7 @@ impl<E: Engine> AllocatedNum<E> {
 
         for bit in bits.iter() {
             packed_lc = packed_lc + (coeff, bit.get_variable());
-
-            coeff.double();
+            coeff.double_in_place();
         }
 
         cs.enforce(
@@ -315,7 +313,7 @@ impl<E: Engine> AllocatedNum<E> {
 
     /// Return fixed amount of bits of the allocated number.
     /// Should be used when there is a priori knowledge of bit length of the number
-    pub fn into_bits_le_fixed<CS>(
+    pub fn to_bits_le_fixed<CS>(
         &self,
         mut cs: CS,
         bit_length: usize,
@@ -332,8 +330,7 @@ impl<E: Engine> AllocatedNum<E> {
 
         for bit in bits.iter() {
             packed_lc = packed_lc + (coeff, bit.get_variable());
-
-            coeff.double();
+            coeff.double_in_place();
         }
 
         cs.enforce(
@@ -355,7 +352,7 @@ impl<E: Engine> AllocatedNum<E> {
         let mut coeff = E::Fr::one();
         for bit in bits {
             data_from_lc = data_from_lc.add_bool_with_coeff(CS::one(), &bit, coeff);
-            coeff.double();
+            coeff.double_in_place();
         }
 
         let data_packed = AllocatedNum::alloc(cs.ns(|| "allocate packed number"), || {
@@ -725,7 +722,7 @@ impl<E: Engine> AllocatedNum<E> {
     {
         // do the bit decomposition and check that higher bits are all zeros
 
-        let mut bits = self.into_bits_le(cs.ns(|| "unpack to limit number of bits"))?;
+        let mut bits = self.to_bits_le(cs.ns(|| "unpack to limit number of bits"))?;
 
         bits.drain(0..number_of_bits);
 
@@ -735,7 +732,7 @@ impl<E: Engine> AllocatedNum<E> {
         let mut coeff = E::Fr::one();
         for bit in bits.into_iter() {
             top_bits_lc = top_bits_lc.add_bool_with_coeff(CS::one(), &bit, coeff);
-            coeff.double();
+            coeff.double_in_place();
         }
 
         // enforce packing and zeroness
@@ -796,7 +793,7 @@ impl<E: Engine> AllocatedNum<E> {
 
 impl<E: Engine> CondSelectGadget<E::Fr> for AllocatedNum<E> {
     fn conditionally_select<CS: ConstraintSystem<E::Fr>>(
-        cs: CS,
+        mut cs: CS,
         cond: &Boolean,
         true_value: &Self,
         false_value: &Self,
@@ -982,9 +979,7 @@ impl<E: Engine> Add<&Num<E>> for Num<E> {
     fn add(self, other: &Num<E>) -> Num<E> {
         let newval = match (self.value, other.value) {
             (Some(mut curval), Some(val)) => {
-                let mut tmp = val;
-                curval.add_assign(&tmp);
-
+                curval.add_assign(&val);
                 Some(curval)
             }
             _ => None,
@@ -1003,9 +998,7 @@ impl<E: Engine> Sub<&Num<E>> for Num<E> {
     fn sub(self, other: &Num<E>) -> Num<E> {
         let newval = match (self.value, other.value) {
             (Some(mut curval), Some(val)) => {
-                let mut tmp = val;
-                curval.sub_assign(&tmp);
-
+                curval.sub_assign(&val);
                 Some(curval)
             }
             _ => None,

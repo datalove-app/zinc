@@ -1,3 +1,6 @@
+mod uint32;
+pub use uint32::*;
+
 use crate::gadgets::{utils, Expression, IntegerType, Scalar, ScalarType, ScalarTypeExpectation};
 use crate::{Engine, Result, RuntimeError};
 use algebra::Zero;
@@ -79,7 +82,7 @@ where
     )?;
 
     // If value is overflowing, `into_bits_le_fixed` will be unsatisfiable.
-    let _bits = value_to_check.into_bits_le_fixed(cs.ns(|| "into_bits"), int_type.bitlength)?;
+    let _bits = value_to_check.to_bits_le_fixed(cs.ns(|| "into_bits"), int_type.bitlength)?;
 
     Ok(scalar.with_type_unchecked(int_type.into()))
 }

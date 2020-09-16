@@ -1,3 +1,6 @@
+mod multieq;
+pub use multieq::*;
+
 use crate::auto_const;
 use crate::gadgets;
 use crate::gadgets::auto_const::prelude::*;
