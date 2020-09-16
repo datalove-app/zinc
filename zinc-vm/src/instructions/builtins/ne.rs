@@ -1,4 +1,4 @@
-use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
+use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::{gadgets, Engine};
 use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Ne;

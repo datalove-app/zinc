@@ -16,7 +16,11 @@ impl Reverse {
 }
 
 impl<E: Engine> NativeFunction<E> for Reverse {
-    fn execute<CS: ConstraintSystem<E::Fr>>(&self, _cs: CS, stack: &mut EvaluationStack<E>) -> Result {
+    fn execute<CS: ConstraintSystem<E::Fr>>(
+        &self,
+        _cs: CS,
+        stack: &mut EvaluationStack<E>,
+    ) -> Result {
         let mut array = Vec::with_capacity(self.array_length);
 
         for _ in 0..self.array_length {

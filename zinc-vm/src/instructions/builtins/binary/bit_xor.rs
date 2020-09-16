@@ -1,6 +1,6 @@
 use crate::core::{InternalVM, VMInstruction, VirtualMachine};
-use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
 use crate::gadgets::utils::{bigint_to_fr, fr_to_bigint};
+use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
 use crate::{Engine, Result, RuntimeError};
 use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::BitXor;
@@ -21,10 +21,11 @@ where
 
         let result_value = &left_value ^ &right_value;
 
-        let result_fr = bigint_to_fr::<E::Fr>(&result_value).ok_or(RuntimeError::ValueOverflow {
-            value: result_value,
-            scalar_type,
-        })?;
+        let result_fr =
+            bigint_to_fr::<E::Fr>(&result_value).ok_or(RuntimeError::ValueOverflow {
+                value: result_value,
+                scalar_type,
+            })?;
         let result = Scalar::new_constant_fr(result_fr, scalar_type);
         vm.push(result.into())
     }

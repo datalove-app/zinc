@@ -1,4 +1,4 @@
-use crate::core::{location::CodeLocation, VirtualMachine, VMInstruction};
+use crate::core::{location::CodeLocation, VMInstruction, VirtualMachine};
 use crate::{Engine, RuntimeError};
 use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::*;

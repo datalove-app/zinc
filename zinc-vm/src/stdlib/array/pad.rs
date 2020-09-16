@@ -22,7 +22,11 @@ impl Pad {
 }
 
 impl<E: Engine> NativeFunction<E> for Pad {
-    fn execute<CS: ConstraintSystem<E::Fr>>(&self, _cs: CS, stack: &mut EvaluationStack<E>) -> Result {
+    fn execute<CS: ConstraintSystem<E::Fr>>(
+        &self,
+        _cs: CS,
+        stack: &mut EvaluationStack<E>,
+    ) -> Result {
         let filler = stack.pop()?.value()?;
         let new_length = stack.pop()?.value()?.get_constant_usize()?;
 

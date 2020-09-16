@@ -1,4 +1,4 @@
-use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
+use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::gadgets::{self, Scalar, ScalarType, ScalarTypeExpectation};
 use crate::Engine;
 use r1cs_core::ConstraintSystem;

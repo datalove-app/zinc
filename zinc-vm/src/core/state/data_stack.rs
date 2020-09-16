@@ -1,7 +1,7 @@
 use crate::core::{Cell, RuntimeError};
 use crate::errors::MalformedBytecode;
-use crate::{gadgets, Engine};
 use crate::gadgets::{Gadgets, Scalar};
+use crate::{gadgets, Engine};
 use r1cs_core::ConstraintSystem;
 use std::{collections::BTreeMap, fmt};
 

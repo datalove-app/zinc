@@ -1,5 +1,5 @@
-use crate::{Engine, Result};
 use crate::gadgets::{AllocatedNum, Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant};
+use crate::{Engine, Result};
 use algebra::Zero;
 use r1cs_core::ConstraintSystem;
 

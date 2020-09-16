@@ -21,12 +21,15 @@ impl<E: Engine> NativeFunction<E> for FieldFromBits {
             bits.push(boolean);
         }
 
-        let num =
-            AllocatedNum::<E>::pack_bits_to_element(cs.ns(|| "pack_bits_to_element"), &bits)?;
+        let num = AllocatedNum::<E>::pack_bits_to_element(cs.ns(|| "pack_bits_to_element"), &bits)?;
 
         stack.push(
-            Scalar::<E>::new_unchecked_variable(num.get_value(), num.get_variable(), ScalarType::Field)
-                .into(),
+            Scalar::<E>::new_unchecked_variable(
+                num.get_value(),
+                num.get_variable(),
+                ScalarType::Field,
+            )
+            .into(),
         )?;
 
         Ok(())

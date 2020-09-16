@@ -1,5 +1,5 @@
-use crate::{Engine, Result, RuntimeError};
 use crate::gadgets::{utils, Expression, IntegerType, Scalar, ScalarType, ScalarTypeExpectation};
+use crate::{Engine, Result, RuntimeError};
 use algebra::Zero;
 use num_bigint::BigInt;
 use r1cs_core::ConstraintSystem;
@@ -23,7 +23,8 @@ where
         }
         ScalarType::Boolean => {
             // Check as u1 integer, then changet type to Boolean
-            let checked = conditional_type_check::<E, CS>(cs, condition, scalar, IntegerType::U1.into())?;
+            let checked =
+                conditional_type_check::<E, CS>(cs, condition, scalar, IntegerType::U1.into())?;
             Ok(checked.with_type_unchecked(scalar_type))
         }
         ScalarType::Integer(int_type) => {
@@ -78,8 +79,7 @@ where
     )?;
 
     // If value is overflowing, `into_bits_le_fixed` will be unsatisfiable.
-    let _bits =
-        value_to_check.into_bits_le_fixed(cs.ns(|| "into_bits"), int_type.bitlength)?;
+    let _bits = value_to_check.into_bits_le_fixed(cs.ns(|| "into_bits"), int_type.bitlength)?;
 
     Ok(scalar.with_type_unchecked(int_type.into()))
 }

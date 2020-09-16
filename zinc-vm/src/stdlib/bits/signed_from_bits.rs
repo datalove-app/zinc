@@ -43,8 +43,7 @@ impl<E: Engine> NativeFunction<E> for SignedFromBits {
         let sign_bit = bits[self.bit_length - 1].clone();
         bits.push(sign_bit.not());
 
-        let num =
-            AllocatedNum::pack_bits_to_element(cs.ns(|| "pack_bits_to_element"), &bits)?;
+        let num = AllocatedNum::pack_bits_to_element(cs.ns(|| "pack_bits_to_element"), &bits)?;
 
         let num_expr = Expression::from(&num);
         let base_value = BigInt::from(1) << self.bit_length;

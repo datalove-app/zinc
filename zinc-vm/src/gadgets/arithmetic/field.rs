@@ -41,10 +41,10 @@ where
 mod tests {
     use super::*;
 
-    use bellman::ConstraintSystem;
     use algebra::Field;
-    use r1cs_std::test_constraint_system::TestConstraintSystem;
+    use bellman::ConstraintSystem;
     use pairing::bn256::{Bn256, Fr};
+    use r1cs_std::test_constraint_system::TestConstraintSystem;
 
     use crate::gadgets::Scalar;
     use zinc_bytecode::scalar::ScalarType;
@@ -58,10 +58,7 @@ mod tests {
 
         assert!(inverse(cs.ns(|| "zero"), &zero).is_err(), "zero");
         assert_eq!(
-            inverse(cs.ns(|| "one"), &one)
-                .unwrap()
-                .get_value()
-                .unwrap(),
+            inverse(cs.ns(|| "one"), &one).unwrap().get_value().unwrap(),
             Fr::one(),
             "one"
         );

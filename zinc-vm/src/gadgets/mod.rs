@@ -20,8 +20,8 @@ pub use misc::*;
 pub use scalar::*;
 pub use types::*;
 
-use crate::Engine;
 use crate::core::RuntimeError;
+use crate::Engine;
 use r1cs_core::ConstraintSystem;
 
 pub trait Gadget<E: Engine> {

@@ -39,16 +39,18 @@ impl<E: Engine> NativeFunction<E> for UnsignedFromBits {
             bits.push(boolean);
         }
 
-        let num =
-            AllocatedNum::<E>::pack_bits_to_element(cs.ns(|| "pack_bits_to_element"), &bits)?;
+        let num = AllocatedNum::<E>::pack_bits_to_element(cs.ns(|| "pack_bits_to_element"), &bits)?;
 
         let int_type = IntegerType {
             is_signed: false,
             bitlength: self.bit_length,
         };
 
-        let scalar =
-            Scalar::<E>::new_unchecked_variable(num.get_value(), num.get_variable(), int_type.into());
+        let scalar = Scalar::<E>::new_unchecked_variable(
+            num.get_value(),
+            num.get_variable(),
+            int_type.into(),
+        );
 
         stack.push(scalar.into())?;
 

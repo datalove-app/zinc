@@ -1,4 +1,4 @@
-use crate::core::{InternalVM, RuntimeError, VirtualMachine, VMInstruction};
+use crate::core::{InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 // use crate::stdlib::crypto::VerifySchnorrSignature;
 use crate::{stdlib, Engine};
 use r1cs_core::ConstraintSystem;

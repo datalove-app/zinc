@@ -26,9 +26,7 @@ impl<E: Engine> NativeFunction<E> for ToBits {
                 }
             }
             ScalarType::Boolean => vec![scalar.to_boolean(cs.ns(|| "to_boolean"))?],
-            ScalarType::Field => {
-                expr.into_bits_le_strict(cs.ns(|| "into_bits_le_strict"))?
-            }
+            ScalarType::Field => expr.into_bits_le_strict(cs.ns(|| "into_bits_le_strict"))?,
         };
 
         // We use big-endian

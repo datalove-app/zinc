@@ -1,5 +1,5 @@
 use crate::auto_const;
-use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
+use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{ScalarType, ScalarTypeExpectation};
 use crate::{gadgets, Engine};
@@ -20,12 +20,7 @@ where
         let condition = vm.condition_top()?;
         let cs = vm.constraint_system();
 
-        let unchecked_mul = auto_const!(
-            gadgets::arithmetic::mul,
-            cs.ns(|| "mul"),
-            &left,
-            &right
-        )?;
+        let unchecked_mul = auto_const!(gadgets::arithmetic::mul, cs.ns(|| "mul"), &left, &right)?;
 
         let mul = gadgets::types::conditional_type_check(
             cs.ns(|| "type check"),

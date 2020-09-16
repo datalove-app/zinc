@@ -1,13 +1,16 @@
 mod scalar_type;
 pub use scalar_type::*;
 
-use crate::{Engine, Result, RuntimeError};
 use crate::gadgets::{utils, AllocatedNum, Expression};
+use crate::{Engine, Result, RuntimeError};
 use algebra::{One, Zero};
 use num_bigint::{BigInt, ToBigInt};
 use num_traits::ToPrimitive;
 use r1cs_core::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
-use r1cs_std::{alloc::AllocGadget, bits::boolean::{AllocatedBit, Boolean}};
+use r1cs_std::{
+    alloc::AllocGadget,
+    bits::boolean::{AllocatedBit, Boolean},
+};
 use std::{fmt, str::FromStr};
 
 /// Scalar is a primitive value that can be stored on the stack and operated by VM's instructions.
@@ -50,7 +53,9 @@ impl<E: Engine> Scalar<E> {
     pub fn new_constant_int(value: usize, scalar_type: ScalarType) -> Self {
         let value_string = value.to_string();
         // FIXME
-        let fr = E::Fr::from_str(&value_string).ok().expect("failed to convert u64 into Fr");
+        let fr = E::Fr::from_str(&value_string)
+            .ok()
+            .expect("failed to convert u64 into Fr");
         Self::new_constant_fr(fr, scalar_type)
     }
 
@@ -95,12 +100,12 @@ impl<E: Engine> Scalar<E> {
         match &self.variant {
             ScalarVariant::Constant(constant) => Ok(Boolean::constant(!constant.value.is_zero())),
             ScalarVariant::Variable(variable) => {
-                let bit = AllocatedBit::alloc(
-                    cs.ns(|| "allocate bit"),
-                    || variable.value
+                let bit = AllocatedBit::alloc(cs.ns(|| "allocate bit"), || {
+                    variable
+                        .value
                         .map(|value| !value.is_zero())
-                        .ok_or(SynthesisError::AssignmentMissing),
-                )?;
+                        .ok_or(SynthesisError::AssignmentMissing)
+                })?;
 
                 cs.enforce(
                     || "bit equality",

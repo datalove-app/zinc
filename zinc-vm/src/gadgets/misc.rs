@@ -1,5 +1,7 @@
 use crate::core::RuntimeError;
-use crate::gadgets::{self, utils, Expression, Gadget, Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant};
+use crate::gadgets::{
+    self, utils, Expression, Gadget, Scalar, ScalarType, ScalarTypeExpectation, ScalarVariant,
+};
 use crate::Engine;
 use algebra::{Field, One, Zero};
 use num_bigint::BigInt;
@@ -53,7 +55,10 @@ where
     ) -> Result<Scalar<E>, RuntimeError> {
         let mut cs = self.cs_namespace();
 
-        let variable = cs.alloc(|| "variable", || value.ok_or(SynthesisError::AssignmentMissing))?;
+        let variable = cs.alloc(
+            || "variable",
+            || value.ok_or(SynthesisError::AssignmentMissing),
+        )?;
         let scalar = Scalar::new_unchecked_variable(value, variable, scalar_type);
 
         match scalar_type {
@@ -99,10 +104,11 @@ where
         value: &BigInt,
         scalar_type: ScalarType,
     ) -> Result<Scalar<E>, RuntimeError> {
-        let value = utils::bigint_to_fr::<E::Fr>(value).ok_or_else(|| RuntimeError::ValueOverflow {
-            value: value.clone(),
-            scalar_type,
-        })?;
+        let value =
+            utils::bigint_to_fr::<E::Fr>(value).ok_or_else(|| RuntimeError::ValueOverflow {
+                value: value.clone(),
+                scalar_type,
+            })?;
 
         Ok(Scalar::new_constant_fr(value, scalar_type))
     }
@@ -214,7 +220,10 @@ where
         };
 
         let variable = cs
-            .alloc(|| "conjunction", || value.ok_or(SynthesisError::AssignmentMissing))
+            .alloc(
+                || "conjunction",
+                || value.ok_or(SynthesisError::AssignmentMissing),
+            )
             .map_err(RuntimeError::SynthesisError)?;
 
         // (a + a) * (b) = (a + b - c)
@@ -265,7 +274,10 @@ where
 
         let mut cs = self.cs_namespace();
         let inverse_variable = cs
-            .alloc(|| "inverse", || inverse_value.ok_or(SynthesisError::AssignmentMissing))
+            .alloc(
+                || "inverse",
+                || inverse_value.ok_or(SynthesisError::AssignmentMissing),
+            )
             .map_err(RuntimeError::SynthesisError)?;
 
         cs.enforce(

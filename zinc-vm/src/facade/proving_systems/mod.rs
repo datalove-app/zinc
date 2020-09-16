@@ -11,7 +11,10 @@ pub trait ProvingSystem<E: Engine> {
     type PreparedVerifyingKey;
     type VerifyingKey;
 
-    fn generate_random_parameters<C, R>(circuit: C, rng: &mut R) -> Result<Self::Parameters, SynthesisError>
+    fn generate_random_parameters<C, R>(
+        circuit: C,
+        rng: &mut R,
+    ) -> Result<Self::Parameters, SynthesisError>
     where
         C: ConstraintSynthesizer<E::Fr>,
         R: Rng;
@@ -19,7 +22,7 @@ pub trait ProvingSystem<E: Engine> {
     fn create_random_proof<C, R>(
         circuit: C,
         params: &Self::Parameters,
-        rng: &mut R
+        rng: &mut R,
     ) -> Result<Self::Proof, SynthesisError>
     where
         C: ConstraintSynthesizer<E::Fr>,
@@ -30,6 +33,6 @@ pub trait ProvingSystem<E: Engine> {
     fn verify_proof(
         pvk: &Self::PreparedVerifyingKey,
         proof: &Self::Proof,
-        public_inputs: &[E::Fr]
+        public_inputs: &[E::Fr],
     ) -> Result<bool, VerificationError>;
 }

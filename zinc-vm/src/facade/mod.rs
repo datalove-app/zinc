@@ -26,8 +26,13 @@ impl<E: Engine> ConstraintSynthesizer<E::Fr> for VMCircuit<'_, E> {
         cs: &mut CS,
     ) -> std::result::Result<(), SynthesisError> {
         // let cs = LoggingConstraintSystem::new(cs.ns(|| "logging"));
-        let cs = DuplicateRemovingCS::<E, Namespace<'_, E::Fr, CS::Root>>::new(cs.ns(|| "duplicates removing"));
-        let mut vm = VirtualMachine::<E, DuplicateRemovingCS<E, Namespace<'_, E::Fr, CS::Root>>>::new(cs, false);
+        let cs = DuplicateRemovingCS::<E, Namespace<'_, E::Fr, CS::Root>>::new(
+            cs.ns(|| "duplicates removing"),
+        );
+        let mut vm =
+            VirtualMachine::<E, DuplicateRemovingCS<E, Namespace<'_, E::Fr, CS::Root>>>::new(
+                cs, false,
+            );
         *self.result = Some(vm.run(self.program, self.inputs, |_| {}, |_| Ok(())));
         Ok(())
     }
@@ -171,8 +176,8 @@ pub fn prove<PS: ProvingSystem<E>, E: Engine>(
             engine: PhantomData,
         };
 
-        let proof = PS::create_random_proof(circuit, params, rng)
-            .map_err(RuntimeError::SynthesisError)?;
+        let proof =
+            PS::create_random_proof(circuit, params, rng).map_err(RuntimeError::SynthesisError)?;
 
         (result, proof)
     };

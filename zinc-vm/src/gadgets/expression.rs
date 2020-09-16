@@ -7,7 +7,10 @@ use r1cs_std::{
     bits::boolean::{self, AllocatedBit, Boolean},
     Assignment,
 };
-use std::{ops::{Add, AddAssign, MulAssign, Sub, SubAssign}, str::FromStr};
+use std::{
+    ops::{Add, AddAssign, MulAssign, Sub, SubAssign},
+    str::FromStr,
+};
 
 #[derive(Clone)]
 pub struct Expression<E: Engine> {
@@ -28,7 +31,9 @@ impl<E: Engine> Expression<E> {
 
     pub fn u64<CS: ConstraintSystem<E::Fr>>(number: u64) -> Expression<E> {
         // FIXME
-        let value = E::Fr::from_str(&number.to_string()).ok().expect("failed to convert u64 into Fr");
+        let value = E::Fr::from_str(&number.to_string())
+            .ok()
+            .expect("failed to convert u64 into Fr");
         Expression {
             value: Some(value),
             lc: LinearCombination::<E::Fr>::zero() + (value, CS::one()),
@@ -81,10 +86,9 @@ impl<E: Engine> Expression<E> {
             _ => None,
         };
 
-        let r = boolean::AllocatedBit::alloc(
-            cs.ns(|| "r"),
-            || r_value.ok_or(SynthesisError::AssignmentMissing)
-        )?;
+        let r = boolean::AllocatedBit::alloc(cs.ns(|| "r"), || {
+            r_value.ok_or(SynthesisError::AssignmentMissing)
+        })?;
 
         // Let `delta = a - b`
 
@@ -118,7 +122,9 @@ impl<E: Engine> Expression<E> {
             _ => None,
         };
 
-        let x = AllocatedNum::<E>::alloc(cs.ns(|| "x"), || x_value.ok_or(SynthesisError::AssignmentMissing))?;
+        let x = AllocatedNum::<E>::alloc(cs.ns(|| "x"), || {
+            x_value.ok_or(SynthesisError::AssignmentMissing)
+        })?;
 
         // Constrain allocation:
         // 0 = (a - b) * r
@@ -261,7 +267,8 @@ impl<E: Engine> Expression<E> {
     /// strictly exists "in the field" (i.e., a
     /// congruency is not allowed.)
     pub fn into_bits_le_strict<CS>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError>
-        where CS: ConstraintSystem<E::Fr>,
+    where
+        CS: ConstraintSystem<E::Fr>,
     {
         pub fn kary_and<E, CS>(
             mut cs: CS,
@@ -320,10 +327,9 @@ impl<E: Engine> Expression<E> {
             if b {
                 // This is part of a run of ones. Let's just
                 // allocate the boolean with the expected value.
-                let a_bit = AllocatedBit::alloc(
-                    cs.ns(|| format!("bit {}", i)),
-                    || a_bit.ok_or(SynthesisError::AssignmentMissing)
-                )?;
+                let a_bit = AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), || {
+                    a_bit.ok_or(SynthesisError::AssignmentMissing)
+                })?;
                 // ... and add it to the current run of ones.
                 current_run.push(a_bit.clone());
                 result.push(a_bit);
@@ -391,7 +397,8 @@ impl<E: Engine> Expression<E> {
     /// Note that this does not strongly enforce that the commitment is
     /// "in the field."
     pub fn into_bits_le<CS>(&self, mut cs: CS) -> Result<Vec<Boolean>, SynthesisError>
-        where CS: ConstraintSystem<E::Fr>,
+    where
+        CS: ConstraintSystem<E::Fr>,
     {
         let bits = field_into_allocated_bits_le::<CS, E::Fr>(&mut cs, self.value)?;
 
@@ -406,24 +413,23 @@ impl<E: Engine> Expression<E> {
 
         // ensure packed bits equal to given lc
         // packed_lc * 1 == self.lc
-        cs.enforce(|| "unpacking constraint",
+        cs.enforce(
+            || "unpacking constraint",
             |_| packed_lc,
             |zero| zero + CS::one(),
-            |zero| zero + &self.lc
+            |zero| zero + &self.lc,
         );
 
         Ok(bits.into_iter().map(|b| Boolean::from(b)).collect())
     }
 
     pub fn into_number<CS>(&self, mut cs: CS) -> Result<AllocatedNum<E>, SynthesisError>
-        where CS: ConstraintSystem<E::Fr>,
+    where
+        CS: ConstraintSystem<E::Fr>,
     {
-        let value = AllocatedNum::alloc(
-            cs.ns(|| "allocate number"),
-            || {
-                self.value.ok_or(SynthesisError::AssignmentMissing)
-            }
-        )?;
+        let value = AllocatedNum::alloc(cs.ns(|| "allocate number"), || {
+            self.value.ok_or(SynthesisError::AssignmentMissing)
+        })?;
 
         // ensure packed bits equal to given lc
         // packed_lc * 1 == self.lc
@@ -431,7 +437,7 @@ impl<E: Engine> Expression<E> {
             || "packing constraint",
             |zero| zero + value.get_variable(),
             |zero| zero + CS::one(),
-            |zero| zero + &self.lc
+            |zero| zero + &self.lc,
         );
 
         Ok(value)
@@ -444,9 +450,11 @@ impl<E: Engine> Expression<E> {
         mut cs: CS,
         bit_length: usize,
     ) -> Result<Vec<Boolean>, SynthesisError>
-        where CS: ConstraintSystem<E::Fr>,
+    where
+        CS: ConstraintSystem<E::Fr>,
     {
-        let bits = field_into_allocated_bits_le_fixed::<CS, E::Fr>(&mut cs, self.value, bit_length)?;
+        let bits =
+            field_into_allocated_bits_le_fixed::<CS, E::Fr>(&mut cs, self.value, bit_length)?;
 
         let mut packed_lc = LinearCombination::zero();
         let mut coeff = E::Fr::one();
@@ -459,10 +467,11 @@ impl<E: Engine> Expression<E> {
 
         // ensure packed bits equal to given lc
         // packed_lc * 1 == self.lc
-        cs.enforce(|| "unpacking constraint",
+        cs.enforce(
+            || "unpacking constraint",
             |_| packed_lc,
             |zero| zero + CS::one(),
-            |zero| zero + &self.lc
+            |zero| zero + &self.lc,
         );
 
         Ok(bits.into_iter().map(|b| Boolean::from(b)).collect())
@@ -475,7 +484,8 @@ impl<E: Engine> Expression<E> {
         mut cs: CS,
         number_of_bits: usize,
     ) -> Result<(), SynthesisError>
-        where CS: ConstraintSystem<E::Fr>,
+    where
+        CS: ConstraintSystem<E::Fr>,
     {
         // do the bit decomposition and check that higher bits are all zeros
 
@@ -577,9 +587,8 @@ impl<E: Engine, EX: Into<Expression<E>>> Sub<EX> for Expression<E> {
 
 pub fn field_into_allocated_bits_le<CS: ConstraintSystem<F>, F: PrimeField>(
     cs: &mut CS,
-    value: Option<F>
-) -> Result<Vec<AllocatedBit>, SynthesisError>
-{
+    value: Option<F>,
+) -> Result<Vec<AllocatedBit>, SynthesisError> {
     // Deconstruct in big-endian bit order
     let size_bits = F::Params::MODULUS_BITS as usize;
     let values = match value {
@@ -602,19 +611,21 @@ pub fn field_into_allocated_bits_le<CS: ConstraintSystem<F>, F: PrimeField>(
             assert_eq!(tmp.len(), size_bits);
 
             tmp
-        },
-        None => {
-            vec![None; size_bits]
         }
+        None => vec![None; size_bits],
     };
 
     // Allocate in little-endian order
-    let bits = values.into_iter().rev().enumerate().map(|(i, b)| {
-        AllocatedBit::alloc(
-            cs.ns(|| format!("bit {}", i)),
-            || b.ok_or(SynthesisError::AssignmentMissing)
-        )
-    }).collect::<Result<Vec<_>, SynthesisError>>()?;
+    let bits = values
+        .into_iter()
+        .rev()
+        .enumerate()
+        .map(|(i, b)| {
+            AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), || {
+                b.ok_or(SynthesisError::AssignmentMissing)
+            })
+        })
+        .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     Ok(bits)
 }
@@ -657,10 +668,11 @@ pub fn field_into_allocated_bits_le_fixed<CS: ConstraintSystem<F>, F: PrimeField
         .rev()
         .enumerate()
         .take(bit_length)
-        .map(|(i, b)| AllocatedBit::alloc(
-            cs.ns(|| format!("bit {}", i)),
-            || b.ok_or(SynthesisError::AssignmentMissing)
-        ))
+        .map(|(i, b)| {
+            AllocatedBit::alloc(cs.ns(|| format!("bit {}", i)), || {
+                b.ok_or(SynthesisError::AssignmentMissing)
+            })
+        })
         .collect::<Result<Vec<_>, SynthesisError>>()?;
 
     Ok(bits)

@@ -30,10 +30,11 @@ where
         left_value &= &BigInt::from_bytes_le(Sign::Plus, mask.as_slice());
         let result_value = &left_value >> right_value.to_usize().unwrap();
 
-        let result_fr = bigint_to_fr::<E::Fr>(&result_value).ok_or(RuntimeError::ValueOverflow {
-            value: result_value,
-            scalar_type,
-        })?;
+        let result_fr =
+            bigint_to_fr::<E::Fr>(&result_value).ok_or(RuntimeError::ValueOverflow {
+                value: result_value,
+                scalar_type,
+            })?;
         let result = Scalar::new_constant_fr(result_fr, scalar_type);
         vm.push(result.into())
     }

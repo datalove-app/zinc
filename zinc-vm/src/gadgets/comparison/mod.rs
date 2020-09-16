@@ -4,9 +4,9 @@ use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{utils, AllocatedNum, Expression, Scalar, ScalarTypeExpectation};
 use crate::{Engine, Result, RuntimeError};
 use algebra::{FpParameters, PrimeField};
+use num_bigint::BigInt;
 use r1cs_core::{ConstraintSystem, Namespace, SynthesisError};
 use r1cs_std::prelude::Boolean;
-use num_bigint::BigInt;
 use zinc_bytecode::scalar::ScalarType;
 
 pub fn gt<E, CS>(cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
@@ -142,10 +142,13 @@ where
 
     let upper_a_eq_b = AllocatedNum::equals(cs.ns(|| "upper_a_eq_b"), &a_upper, &b_upper)?;
 
-    let lower_lt_and_upper_eq =
-        Boolean::and(cs.ns(|| ""), &lower_a_lt_b, &upper_a_eq_b.into())?;
+    let lower_lt_and_upper_eq = Boolean::and(cs.ns(|| ""), &lower_a_lt_b, &upper_a_eq_b.into())?;
 
-    let res = boolean_or::<E, Namespace<'_, E::Fr, CS::Root>>(cs.ns(|| "lt"), &upper_a_lt_b, &lower_lt_and_upper_eq)?;
+    let res = boolean_or::<E, Namespace<'_, E::Fr, CS::Root>>(
+        cs.ns(|| "lt"),
+        &upper_a_lt_b,
+        &lower_lt_and_upper_eq,
+    )?;
     Scalar::from_boolean(cs.ns(|| "from_boolean"), res)
 }
 

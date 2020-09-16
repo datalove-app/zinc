@@ -53,9 +53,15 @@ where
     }
 
     let (quotient, remainder) = {
-        let qutioent_var = cs.alloc(|| "qutioent", || quotient_value.ok_or(SynthesisError::AssignmentMissing))?;
+        let qutioent_var = cs.alloc(
+            || "qutioent",
+            || quotient_value.ok_or(SynthesisError::AssignmentMissing),
+        )?;
 
-        let remainder_var = cs.alloc(|| "remainder", || remainder_value.ok_or(SynthesisError::AssignmentMissing))?;
+        let remainder_var = cs.alloc(
+            || "remainder",
+            || remainder_value.ok_or(SynthesisError::AssignmentMissing),
+        )?;
 
         cs.enforce(
             || "equality",

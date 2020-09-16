@@ -8,5 +8,9 @@ use crate::{Engine, Result};
 use r1cs_core::ConstraintSystem;
 
 pub trait NativeFunction<E: Engine> {
-    fn execute<CS: ConstraintSystem<E::Fr>>(&self, cs: CS, stack: &mut EvaluationStack<E>) -> Result;
+    fn execute<CS: ConstraintSystem<E::Fr>>(
+        &self,
+        cs: CS,
+        stack: &mut EvaluationStack<E>,
+    ) -> Result;
 }
