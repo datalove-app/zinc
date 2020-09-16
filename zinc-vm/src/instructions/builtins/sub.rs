@@ -1,18 +1,15 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::auto_const;
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
+use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{ScalarType, ScalarTypeExpectation};
 use crate::{gadgets, Engine};
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Sub;
 
 impl<E, CS> VMInstruction<E, CS> for Sub
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         let right = vm.pop()?.value()?;
@@ -25,13 +22,13 @@ where
 
         let unchecked_diff = auto_const!(
             gadgets::arithmetic::sub,
-            cs.namespace(|| "diff"),
+            cs.ns(|| "diff"),
             &left,
             &right
         )?;
 
         let diff = gadgets::types::conditional_type_check(
-            cs.namespace(|| "type check"),
+            cs.ns(|| "type check"),
             &condition,
             &unchecked_diff,
             diff_type,

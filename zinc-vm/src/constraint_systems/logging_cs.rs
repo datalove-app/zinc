@@ -1,20 +1,18 @@
-use crate::gadgets::utils;
-use bellman::ConstraintSystem;
+use crate::{gadgets::utils, Engine};
 use failure::_core::marker::PhantomData;
-use franklin_crypto::bellman::{Index, LinearCombination, SynthesisError, Variable};
 use num_bigint::BigInt;
 use num_traits::Signed;
-use pairing::Engine;
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 
 pub struct LoggingConstraintSystem<E, CS>(CS, PhantomData<E>)
 where
     E: Engine,
-    CS: ConstraintSystem<E>;
+    CS: ConstraintSystem<E::Fr>;
 
 impl<E, CS> LoggingConstraintSystem<E, CS>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     pub fn new(cs: CS) -> Self {
         Self(cs, PhantomData)
@@ -33,10 +31,10 @@ where
     }
 }
 
-impl<E, CS> ConstraintSystem<E> for LoggingConstraintSystem<E, CS>
+impl<E, CS> ConstraintSystem<E::Fr> for LoggingConstraintSystem<E, CS>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     type Root = Self;
 
@@ -94,9 +92,9 @@ where
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
         let ar = annotation().into();
         let lc_a = a(LinearCombination::zero());
@@ -104,9 +102,9 @@ where
         let lc_c = c(LinearCombination::zero());
         log::trace!(
             "r1cs: constraint: ({}) * ({}) = ({}), name = {}",
-            lc_to_string(&lc_a),
-            lc_to_string(&lc_b),
-            lc_to_string(&lc_c),
+            lc_to_string::<E>(&lc_a),
+            lc_to_string::<E>(&lc_b),
+            lc_to_string::<E>(&lc_c),
             ar,
         );
 
@@ -128,9 +126,13 @@ where
     fn get_root(&mut self) -> &mut Self::Root {
         self
     }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
+    }
 }
 
-fn lc_to_string<E: Engine>(lc: &LinearCombination<E>) -> String {
+fn lc_to_string<E: Engine>(lc: &LinearCombination<E::Fr>) -> String {
     let mut string = String::new();
 
     let mut is_first = true;

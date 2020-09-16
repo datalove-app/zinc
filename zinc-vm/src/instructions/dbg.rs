@@ -1,17 +1,15 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::{ConstraintSystem, SynthesisError};
 use crate::core::{InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::Engine;
 use num_bigint::ToBigInt;
 use num_traits::Signed;
+use r1cs_core::{ConstraintSystem, SynthesisError};
 use zinc_bytecode::data::values::Value;
 use zinc_bytecode::instructions::Dbg;
 
 impl<E, CS> VMInstruction<E, CS> for Dbg
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         let mut values = Vec::with_capacity(self.arg_types.len());

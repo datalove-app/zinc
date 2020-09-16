@@ -1,25 +1,24 @@
 use crate::auto_const;
 use crate::gadgets::auto_const::prelude::*;
-use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
+use crate::gadgets::{AllocatedNum, Scalar, ScalarType, ScalarTypeExpectation};
 use crate::{Engine, Result};
-use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
-use franklin_crypto::circuit::num::AllocatedNum;
+use algebra::{One, Zero};
+use r1cs_core::ConstraintSystem;
 
 pub fn or<E, CS>(cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn inner<E, CS>(mut cs: CS, left: &Scalar<E>, right: &Scalar<E>) -> Result<Scalar<E>>
     where
         E: Engine,
-        CS: ConstraintSystem<E>,
+        CS: ConstraintSystem<E::Fr>,
     {
         left.get_type().assert_type(ScalarType::Boolean)?;
         right.get_type().assert_type(ScalarType::Boolean)?;
 
-        let num = AllocatedNum::alloc(cs.namespace(|| "value"), || {
+        let num = AllocatedNum::<E>::alloc(cs.ns(|| "value"), || {
             let l = left.grab_value()?;
             let r = right.grab_value()?;
             if l.is_zero() && r.is_zero() {

@@ -1,19 +1,14 @@
 mod scalar_type;
 pub use scalar_type::*;
 
-use bellman::{ConstraintSystem, Variable};
-use num_traits::ToPrimitive;
-use std::fmt;
-
-use crate::gadgets::utils;
 use crate::{Engine, Result, RuntimeError};
-use ff::{Field, PrimeField};
-use franklin_crypto::bellman::{LinearCombination, SynthesisError};
-use franklin_crypto::circuit::boolean::{AllocatedBit, Boolean};
-use franklin_crypto::circuit::expression::Expression;
-use franklin_crypto::circuit::num::AllocatedNum;
-use franklin_crypto::circuit::Assignment;
+use crate::gadgets::{utils, AllocatedNum, Expression};
+use algebra::{One, Zero};
 use num_bigint::{BigInt, ToBigInt};
+use num_traits::ToPrimitive;
+use r1cs_core::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
+use r1cs_std::{alloc::AllocGadget, bits::boolean::{AllocatedBit, Boolean}};
+use std::{fmt, str::FromStr};
 
 /// Scalar is a primitive value that can be stored on the stack and operated by VM's instructions.
 #[derive(Debug, Clone)]
@@ -54,7 +49,8 @@ pub struct ScalarVariable<E: Engine> {
 impl<E: Engine> Scalar<E> {
     pub fn new_constant_int(value: usize, scalar_type: ScalarType) -> Self {
         let value_string = value.to_string();
-        let fr = E::Fr::from_str(&value_string).expect("failed to convert u64 into Fr");
+        // FIXME
+        let fr = E::Fr::from_str(&value_string).ok().expect("failed to convert u64 into Fr");
         Self::new_constant_fr(fr, scalar_type)
     }
 
@@ -71,7 +67,7 @@ impl<E: Engine> Scalar<E> {
     }
 
     pub fn new_constant_bigint(value: &BigInt, scalar_type: ScalarType) -> Result<Self> {
-        let fr = utils::bigint_to_fr::<E>(value).ok_or(RuntimeError::ValueOverflow {
+        let fr = utils::bigint_to_fr::<E::Fr>(value).ok_or(RuntimeError::ValueOverflow {
             value: value.clone(),
             scalar_type,
         })?;
@@ -89,19 +85,21 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn to_expression<CS: ConstraintSystem<E>>(&self) -> Expression<E> {
+    pub fn to_expression<CS: ConstraintSystem<E::Fr>>(&self) -> Expression<E> {
         Expression::new(self.get_value(), self.lc::<CS>())
     }
 
-    pub fn to_boolean<CS: ConstraintSystem<E>>(&self, mut cs: CS) -> Result<Boolean> {
+    pub fn to_boolean<CS: ConstraintSystem<E::Fr>>(&self, mut cs: CS) -> Result<Boolean> {
         self.scalar_type.assert_type(ScalarType::Boolean)?;
 
         match &self.variant {
             ScalarVariant::Constant(constant) => Ok(Boolean::constant(!constant.value.is_zero())),
             ScalarVariant::Variable(variable) => {
                 let bit = AllocatedBit::alloc(
-                    cs.namespace(|| "allocate bit"),
-                    variable.value.map(|value| !value.is_zero()),
+                    cs.ns(|| "allocate bit"),
+                    || variable.value
+                        .map(|value| !value.is_zero())
+                        .ok_or(SynthesisError::AssignmentMissing),
                 )?;
 
                 cs.enforce(
@@ -132,7 +130,7 @@ impl<E: Engine> Scalar<E> {
     }
 
     pub fn grab_value(&self) -> std::result::Result<E::Fr, SynthesisError> {
-        self.get_value().grab()
+        self.get_value().ok_or(SynthesisError::AssignmentMissing)
     }
 
     pub fn get_constant(&self) -> Result<E::Fr> {
@@ -168,7 +166,7 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn lc<CS: ConstraintSystem<E>>(&self) -> LinearCombination<E> {
+    pub fn lc<CS: ConstraintSystem<E::Fr>>(&self) -> LinearCombination<E::Fr> {
         match &self.variant {
             ScalarVariant::Constant(constant) => {
                 LinearCombination::zero() + (constant.value, CS::one())
@@ -177,19 +175,19 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn get_bits_le<CS: ConstraintSystem<E>>(&self, mut cs: CS) -> Result<Vec<Self>> {
+    pub fn get_bits_le<CS: ConstraintSystem<E::Fr>>(&self, mut cs: CS) -> Result<Vec<Self>> {
         let num = self.to_expression::<CS>();
         let bits = match self.scalar_type {
-            ScalarType::Field => num.into_bits_le_strict(cs.namespace(|| "into_bits_le_strict")),
+            ScalarType::Field => num.into_bits_le_strict(cs.ns(|| "into_bits_le_strict")),
             scalar_type => num.into_bits_le_fixed(
-                cs.namespace(|| "into_bits_le_fixed"),
+                cs.ns(|| "into_bits_le_fixed"),
                 scalar_type.bit_length::<E>(),
             ),
         }?;
 
         bits.into_iter()
             .enumerate()
-            .map(|(i, bit)| Self::from_boolean(cs.namespace(|| format!("bit {}", i)), bit))
+            .map(|(i, bit)| Self::from_boolean(cs.ns(|| format!("bit {}", i)), bit))
             .collect()
     }
 
@@ -200,21 +198,21 @@ impl<E: Engine> Scalar<E> {
         }
     }
 
-    pub fn from_boolean<CS: ConstraintSystem<E>>(mut cs: CS, boolean: Boolean) -> Result<Self> {
+    pub fn from_boolean<CS: ConstraintSystem<E::Fr>>(mut cs: CS, boolean: Boolean) -> Result<Self> {
         match boolean {
             Boolean::Is(bit) => Ok(Self::new_unchecked_variable(
-                bit.get_value_field::<E>(),
+                bit.get_value_field::<E::Fr>(),
                 bit.get_variable(),
                 ScalarType::Boolean,
             )),
             Boolean::Not(bit) => {
                 let expr = Expression::constant::<CS>(E::Fr::one()) - Expression::from(&bit);
-                let num = expr.into_number(cs.namespace(|| "into_number"))?;
+                let num = expr.into_number(cs.ns(|| "into_number"))?;
                 let scalar = Self::from(num);
                 Ok(scalar.with_type_unchecked(ScalarType::Boolean))
             }
             Boolean::Constant(_) => Ok(Self::new_constant_fr(
-                boolean.get_value_field::<E>().unwrap(),
+                boolean.get_value_field::<E::Fr>().unwrap(),
                 ScalarType::Boolean,
             )),
         }

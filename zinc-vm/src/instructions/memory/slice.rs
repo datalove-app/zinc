@@ -1,12 +1,12 @@
 use crate::core::{Cell, InternalVM, RuntimeError, VMInstruction, VirtualMachine};
 use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Slice;
 
 impl<E, CS> VMInstruction<E, CS> for Slice
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         let offset = vm.pop()?.value()?;

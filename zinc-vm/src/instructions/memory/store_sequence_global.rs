@@ -1,13 +1,13 @@
 use crate::core::{InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::Engine;
-use franklin_crypto::bellman::ConstraintSystem;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::StoreSequenceGlobal;
 
 impl<E, CS> VMInstruction<E, CS> for StoreSequenceGlobal
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         for i in 0..self.len {

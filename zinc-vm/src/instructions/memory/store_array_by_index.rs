@@ -1,14 +1,13 @@
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
+use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
 use crate::gadgets::Scalar;
 use crate::{gadgets, Engine};
-use franklin_crypto::bellman::ConstraintSystem;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::StoreSequenceByIndex;
 
 impl<E, CS> VMInstruction<E, CS> for StoreSequenceByIndex
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         let mut array = Vec::with_capacity(self.array_len);
@@ -29,7 +28,7 @@ where
         for (i, value) in values.into_iter().enumerate() {
             let cs = vm.constraint_system();
             let offset = Scalar::new_constant_bigint(&i.into(), index.get_type())?;
-            let address = gadgets::add(cs.namespace(|| format!("address {}", i)), &index, &offset)?;
+            let address = gadgets::add(cs.ns(|| format!("address {}", i)), &index, &offset)?;
             array = vm
                 .operations()
                 .array_set(array.as_slice(), address, value)?;

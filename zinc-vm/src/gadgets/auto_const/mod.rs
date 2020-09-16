@@ -42,7 +42,7 @@ pub mod prelude {
 ///
 /// let mut cs = TestConstraintSystem::<Bn256>::new();
 ///
-/// let c: Scalar<Bn256> = auto_const!(arithmetic::mul, cs.namespace(|| "mul"), &a, &b).unwrap();
+/// let c: Scalar<Bn256> = auto_const!(arithmetic::mul, cs.ns(|| "mul"), &a, &b).unwrap();
 ///
 /// assert!(c.is_constant());
 ///

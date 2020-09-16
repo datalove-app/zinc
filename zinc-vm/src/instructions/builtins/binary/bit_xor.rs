@@ -1,15 +1,14 @@
 use crate::core::{InternalVM, VMInstruction, VirtualMachine};
-use crate::{Engine, Result, RuntimeError};
-
-use crate::gadgets::utils::{bigint_to_fr, fr_to_bigint};
 use crate::gadgets::{Scalar, ScalarType, ScalarTypeExpectation};
-use franklin_crypto::bellman::ConstraintSystem;
+use crate::gadgets::utils::{bigint_to_fr, fr_to_bigint};
+use crate::{Engine, Result, RuntimeError};
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::BitXor;
 
 impl<E, CS> VMInstruction<E, CS> for BitXor
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result {
         let right = vm.pop()?.value()?;
@@ -22,7 +21,7 @@ where
 
         let result_value = &left_value ^ &right_value;
 
-        let result_fr = bigint_to_fr::<E>(&result_value).ok_or(RuntimeError::ValueOverflow {
+        let result_fr = bigint_to_fr::<E::Fr>(&result_value).ok_or(RuntimeError::ValueOverflow {
             value: result_value,
             scalar_type,
         })?;

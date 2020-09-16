@@ -1,19 +1,17 @@
-use bellman::ConstraintSystem;
-use ff::Field;
-use franklin_crypto::bellman::{Index, LinearCombination, SynthesisError, Variable};
-use pairing::Engine;
-use std::collections::BTreeMap;
-use std::marker::PhantomData;
+use crate::Engine;
+use algebra::Zero;
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
+use std::{collections::BTreeMap, marker::PhantomData, ops::AddAssign};
 
 pub struct DuplicateRemovingCS<E, CS>(CS, PhantomData<E>)
 where
     E: Engine,
-    CS: ConstraintSystem<E>;
+    CS: ConstraintSystem<E::Fr>;
 
 impl<E, CS> DuplicateRemovingCS<E, CS>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     pub fn new(cs: CS) -> Self {
         Self(cs, PhantomData)
@@ -32,10 +30,10 @@ where
     }
 }
 
-impl<E, CS> ConstraintSystem<E> for DuplicateRemovingCS<E, CS>
+impl<E, CS> ConstraintSystem<E::Fr> for DuplicateRemovingCS<E, CS>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     type Root = Self;
 
@@ -61,15 +59,15 @@ where
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
         self.0.enforce(
             annotation,
-            |zero| remove_duplicates(a(zero)),
-            |zero| remove_duplicates(b(zero)),
-            |zero| remove_duplicates(c(zero)),
+            |zero| remove_duplicates::<E>(a(zero)),
+            |zero| remove_duplicates::<E>(b(zero)),
+            |zero| remove_duplicates::<E>(c(zero)),
         )
     }
 
@@ -88,9 +86,13 @@ where
     fn get_root(&mut self) -> &mut Self::Root {
         self
     }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
+    }
 }
 
-fn remove_duplicates<E: Engine>(lc: LinearCombination<E>) -> LinearCombination<E> {
+fn remove_duplicates<E: Engine>(lc: LinearCombination<E::Fr>) -> LinearCombination<E::Fr> {
     let mut inputs_map = BTreeMap::<usize, E::Fr>::new();
     let mut aux_map = BTreeMap::<usize, E::Fr>::new();
 

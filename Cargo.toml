@@ -7,7 +7,7 @@ members = [
     "zinc-utils",
     "zinc-vm",
 
-    "zinc-tester",
-
-    "schnorr",
+#    "zinc-tester",
+#
+#    "schnorr",
 ]

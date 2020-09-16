@@ -1,18 +1,15 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::auto_const;
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
+use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
 use crate::gadgets::auto_const::prelude::*;
 use crate::gadgets::{ScalarType, ScalarTypeExpectation};
 use crate::{gadgets, Engine};
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Mul;
 
 impl<E, CS> VMInstruction<E, CS> for Mul
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         let right = vm.pop()?.value()?;
@@ -25,13 +22,13 @@ where
 
         let unchecked_mul = auto_const!(
             gadgets::arithmetic::mul,
-            cs.namespace(|| "mul"),
+            cs.ns(|| "mul"),
             &left,
             &right
         )?;
 
         let mul = gadgets::types::conditional_type_check(
-            cs.namespace(|| "type check"),
+            cs.ns(|| "type check"),
             &condition,
             &unchecked_mul,
             mul_type,

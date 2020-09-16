@@ -1,11 +1,11 @@
 use crate::core::{InternalVM, RuntimeError, VirtualMachine};
 use crate::Engine;
-use bellman::pairing::bn256::Bn256;
+// use bellman::pairing::bn256::Bn256;
 use colored::Colorize;
 use failure::Fail;
-use franklin_crypto::bellman::ConstraintSystem;
-use franklin_crypto::circuit::test::TestConstraintSystem;
 use num_bigint::{BigInt, ToBigInt};
+use r1cs_core::ConstraintSystem;
+use r1cs_std::test_constraint_system::TestConstraintSystem;
 use zinc_bytecode::data::types::DataType;
 use zinc_bytecode::{Call, Instruction, InstructionInfo, Program};
 
@@ -19,7 +19,7 @@ fn new_test_constrained_vm() -> TestVirtualMachine {
 fn assert_stack_eq<E, CS, BI>(vm: &mut VirtualMachine<E, CS>, expected_stack: &[BI])
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
     BI: Into<BigInt> + Copy,
 {
     for (i, expected) in expected_stack.iter().enumerate() {

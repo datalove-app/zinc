@@ -5,7 +5,7 @@ use crate::stdlib::NativeFunction;
 use crate::Result;
 use crate::RuntimeError;
 use crate::{gadgets, Engine};
-use franklin_crypto::bellman::ConstraintSystem;
+use r1cs_core::ConstraintSystem;
 
 /// This is an internal interface to virtual machine used by instructions.
 pub trait InternalVM<E: Engine> {
@@ -34,7 +34,7 @@ pub trait InternalVM<E: Engine> {
 impl<E, CS> InternalVM<E> for VirtualMachine<E, CS>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn push(&mut self, cell: Cell<E>) -> Result {
         self.state.evaluation_stack.push(cell)
@@ -141,7 +141,7 @@ where
         let prev = self.condition_top()?;
 
         let cs = self.constraint_system();
-        let next = gadgets::boolean::and(cs.namespace(|| "branch"), &condition, &prev)?;
+        let next = gadgets::boolean::and(cs.ns(|| "branch"), &condition, &prev)?;
         self.state.conditions_stack.push(next);
 
         let branch = Branch {
@@ -184,7 +184,7 @@ where
         self.condition_pop()?;
         let prev = self.condition_top()?;
         let cs = self.constraint_system();
-        let not_cond = gadgets::not(cs.namespace(|| "not"), &condition)?;
+        let not_cond = gadgets::not(cs.ns(|| "not"), &condition)?;
         let next = self.operations().and(prev, not_cond)?;
         self.condition_push(next)?;
 
@@ -238,6 +238,6 @@ where
         let stack = &mut self.state.evaluation_stack;
         let cs = &mut self.cs.cs;
 
-        function.execute(cs.namespace(|| "native function"), stack)
+        function.execute(cs.ns(|| "native function"), stack)
     }
 }

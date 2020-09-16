@@ -1,17 +1,13 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
-use crate::core::{Cell, InternalVM, VMInstruction};
-use crate::core::{RuntimeError, VirtualMachine};
-use crate::gadgets;
-use crate::gadgets::{ScalarType, ScalarTypeExpectation};
+use crate::core::{Cell, InternalVM, RuntimeError, VirtualMachine, VMInstruction};
+use crate::gadgets::{self, ScalarType, ScalarTypeExpectation};
 use crate::Engine;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::Add;
 
 impl<E, CS> VMInstruction<E, CS> for Add
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         let right = vm.pop()?.value()?;
@@ -22,10 +18,10 @@ where
         let condition = vm.condition_top()?;
         let cs = vm.constraint_system();
 
-        let unchecked_sum = gadgets::add(cs.namespace(|| "sum"), &left, &right)?;
+        let unchecked_sum = gadgets::add(cs.ns(|| "sum"), &left, &right)?;
 
         let sum = gadgets::types::conditional_type_check(
-            cs.namespace(|| "type check"),
+            cs.ns(|| "type check"),
             &condition,
             &unchecked_sum,
             sum_type,

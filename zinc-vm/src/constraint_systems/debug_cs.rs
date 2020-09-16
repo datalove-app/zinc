@@ -1,9 +1,7 @@
-use ff::Field;
-use franklin_crypto::bellman::{
-    ConstraintSystem, Index, LinearCombination, SynthesisError, Variable,
-};
-
 use crate::Engine;
+use algebra::{One, Zero};
+use r1cs_core::{ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
+use std::ops::{AddAssign, MulAssign};
 
 pub struct DebugConstraintSystem<E: Engine> {
     inputs: Vec<E::Fr>,
@@ -37,7 +35,7 @@ impl<E: Engine> DebugConstraintSystem<E> {
     }
 }
 
-impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
+impl<E: Engine> ConstraintSystem<E::Fr> for DebugConstraintSystem<E> {
     type Root = Self;
 
     fn alloc<F, A, AR>(&mut self, _annotation: A, f: F) -> Result<Variable, SynthesisError>
@@ -66,9 +64,9 @@ impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
     where
         A: FnOnce() -> AR,
         AR: Into<String>,
-        LA: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LB: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
-        LC: FnOnce(LinearCombination<E>) -> LinearCombination<E>,
+        LA: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
+        LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
         let zero = LinearCombination::zero();
         let value_a = eval_lc::<E>(a(zero.clone()).as_ref(), &self.inputs, &self.witness);
@@ -99,6 +97,10 @@ impl<E: Engine> ConstraintSystem<E> for DebugConstraintSystem<E> {
 
     fn get_root(&mut self) -> &mut Self::Root {
         self
+    }
+
+    fn num_constraints(&self) -> usize {
+        todo!()
     }
 }
 

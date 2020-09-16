@@ -16,7 +16,7 @@ impl Pedersen {
 }
 
 impl<E: Engine> NativeFunction<E> for Pedersen {
-    fn execute<CS: ConstraintSystem<E>>(
+    fn execute<CS: ConstraintSystem<E::Fr>>(
         &self,
         mut cs: CS,
         stack: &mut EvaluationStack<E>,
@@ -26,7 +26,7 @@ impl<E: Engine> NativeFunction<E> for Pedersen {
             let bit = stack
                 .pop()?
                 .value()?
-                .to_boolean(cs.namespace(|| format!("bit {}", i)))?;
+                .to_boolean(cs.ns(|| format!("bit {}", i)))?;
 
             bits.push(bit);
         }

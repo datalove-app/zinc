@@ -1,15 +1,13 @@
-extern crate franklin_crypto;
-
-use self::franklin_crypto::bellman::ConstraintSystem;
 use crate::core::{InternalVM, VMInstruction};
 use crate::core::{RuntimeError, VirtualMachine};
 use crate::Engine;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::{Else, EndIf, If};
 
 impl<E, CS> VMInstruction<E, CS> for If
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         vm.branch_then()
@@ -19,7 +17,7 @@ where
 impl<E, CS> VMInstruction<E, CS> for Else
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         vm.branch_else()
@@ -29,7 +27,7 @@ where
 impl<E, CS> VMInstruction<E, CS> for EndIf
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError> {
         vm.branch_end()

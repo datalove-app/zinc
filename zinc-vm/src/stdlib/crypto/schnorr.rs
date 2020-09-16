@@ -31,7 +31,7 @@ impl VerifySchnorrSignature {
 impl<E: Engine> NativeFunction<E> for VerifySchnorrSignature {
     fn execute<CS>(&self, mut cs: CS, stack: &mut EvaluationStack<E>) -> Result
     where
-        CS: ConstraintSystem<E>,
+        CS: ConstraintSystem<E::Fr>,
     {
         if self.msg_len > E::Fs::CAPACITY as usize {
             return Err(MalformedBytecode::InvalidArguments(format!(
@@ -52,35 +52,35 @@ impl<E: Engine> NativeFunction<E> for VerifySchnorrSignature {
             .pop()?
             .value()?
             .to_expression::<CS>()
-            .into_number(cs.namespace(|| "to_number pk_y"))?;
+            .into_number(cs.ns(|| "to_number pk_y"))?;
         let pk_x = stack
             .pop()?
             .value()?
             .to_expression::<CS>()
-            .into_number(cs.namespace(|| "to_number pk_x"))?;
+            .into_number(cs.ns(|| "to_number pk_x"))?;
         let s = stack
             .pop()?
             .value()?
             .to_expression::<CS>()
-            .into_number(cs.namespace(|| "to_number s"))?;
+            .into_number(cs.ns(|| "to_number s"))?;
         let r_y = stack
             .pop()?
             .value()?
             .to_expression::<CS>()
-            .into_number(cs.namespace(|| "to_number r_y"))?;
+            .into_number(cs.ns(|| "to_number r_y"))?;
         let r_x = stack
             .pop()?
             .value()?
             .to_expression::<CS>()
-            .into_number(cs.namespace(|| "to_number r_x"))?;
+            .into_number(cs.ns(|| "to_number r_x"))?;
 
-        let r = EdwardsPoint::interpret(cs.namespace(|| "r"), &r_x, &r_y, E::jubjub_params())?;
-        let pk = EdwardsPoint::interpret(cs.namespace(|| "pk"), &pk_x, &pk_y, E::jubjub_params())?;
+        let r = EdwardsPoint::interpret(cs.ns(|| "r"), &r_x, &r_y, E::jubjub_params())?;
+        let pk = EdwardsPoint::interpret(cs.ns(|| "pk"), &pk_x, &pk_y, E::jubjub_params())?;
 
         let signature = EddsaSignature { r, s, pk };
 
         let is_valid = verify_signature(
-            cs.namespace(|| "verify_signature"),
+            cs.ns(|| "verify_signature"),
             &message,
             &signature,
             E::jubjub_params(),
@@ -98,12 +98,12 @@ pub fn verify_signature<E, CS>(
 ) -> Result<Scalar<E>>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     let message_bits = message
         .iter()
         .enumerate()
-        .map(|(i, bit)| bit.to_boolean(cs.namespace(|| format!("message bit {}", i))))
+        .map(|(i, bit)| bit.to_boolean(cs.ns(|| format!("message bit {}", i))))
         .collect::<Result<Vec<_>>>()?;
 
     let public_generator = params
@@ -111,20 +111,20 @@ where
         .clone();
 
     let generator = EdwardsPoint::witness(
-        cs.namespace(|| "allocate public generator"),
+        cs.ns(|| "allocate public generator"),
         Some(public_generator),
         params,
     )?;
 
     let is_verified = signature.is_verified_raw_message_signature(
-        cs.namespace(|| "is_verified_signature"),
+        cs.ns(|| "is_verified_signature"),
         params,
         &message_bits,
         generator,
         E::Fr::CAPACITY as usize / 8,
     )?;
 
-    Scalar::from_boolean(cs.namespace(|| "from_boolean"), is_verified)
+    Scalar::from_boolean(cs.ns(|| "from_boolean"), is_verified)
 }
 
 #[cfg(test)]
@@ -206,7 +206,7 @@ mod tests {
         let mut cs = TestConstraintSystem::new();
         VerifySchnorrSignature::new(5 + 8 * message.len())
             .unwrap()
-            .execute(cs.namespace(|| "signature check"), &mut stack)?;
+            .execute(cs.ns(|| "signature check"), &mut stack)?;
 
         let is_valid = stack.pop()?.value()?;
 

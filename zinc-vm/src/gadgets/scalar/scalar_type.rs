@@ -1,5 +1,5 @@
 use crate::{Engine, RuntimeError};
-use ff::PrimeField;
+use algebra::{FpParameters, PrimeField};
 pub use zinc_bytecode::scalar::*;
 
 pub trait ScalarTypeExpectation: Sized {
@@ -33,7 +33,7 @@ impl ScalarTypeExpectation for ScalarType {
 
     fn bit_length<E: Engine>(&self) -> usize {
         match self {
-            ScalarType::Field => E::Fr::NUM_BITS as usize,
+            ScalarType::Field => <<E as Engine>::Fr as PrimeField>::Params::MODULUS_BITS as usize,
             ScalarType::Boolean => 1,
             ScalarType::Integer(int_type) => int_type.bitlength,
         }

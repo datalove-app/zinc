@@ -1,13 +1,9 @@
-use std::collections::BTreeMap;
-
-use crate::core::Cell;
+use crate::core::{Cell, RuntimeError};
 use crate::errors::MalformedBytecode;
-use crate::gadgets;
+use crate::{gadgets, Engine};
 use crate::gadgets::{Gadgets, Scalar};
-use crate::Engine;
-use crate::RuntimeError;
-use franklin_crypto::bellman::ConstraintSystem;
-use std::fmt;
+use r1cs_core::ConstraintSystem;
+use std::{collections::BTreeMap, fmt};
 
 #[derive(Debug)]
 struct CellDelta<E: Engine> {
@@ -112,7 +108,7 @@ impl<E: Engine> DataStack<E> {
     }
 
     /// Merge top-level branch or branches into parent branch.
-    pub fn merge<CS: ConstraintSystem<E>>(
+    pub fn merge<CS: ConstraintSystem<E::Fr>>(
         &mut self,
         condition: Scalar<E>,
         ops: &mut Gadgets<E, CS>,
@@ -138,7 +134,7 @@ impl<E: Engine> DataStack<E> {
     }
 
     /// Conditionally apply delta
-    fn merge_single<CS: ConstraintSystem<E>>(
+    fn merge_single<CS: ConstraintSystem<E::Fr>>(
         &mut self,
         condition: Scalar<E>,
         delta: &DataStackDelta<E>,
@@ -150,7 +146,7 @@ impl<E: Engine> DataStack<E> {
                 (Some(Cell::Value(old)), Cell::Value(new)) => {
                     let cs = ops
                         .constraint_system()
-                        .namespace(|| format!("merge address {}", addr));
+                        .ns(|| format!("merge address {}", addr));
                     let value = gadgets::conditional_select(cs, &condition, new, old)?;
                     self.set(addr, Cell::Value(value))?;
                 }
@@ -169,7 +165,7 @@ impl<E: Engine> DataStack<E> {
         ops: &mut Gadgets<E, CS>,
     ) -> Result<(), RuntimeError>
     where
-        CS: ConstraintSystem<E>,
+        CS: ConstraintSystem<E::Fr>,
     {
         for (addr, diff) in delta_then.iter() {
             let alt = if let Some(diff) = delta_else.get(addr) {
@@ -183,7 +179,7 @@ impl<E: Engine> DataStack<E> {
                 (Some(Cell::Value(old)), Cell::Value(new)) => {
                     let cs = ops
                         .constraint_system()
-                        .namespace(|| format!("merge address {}", addr));
+                        .ns(|| format!("merge address {}", addr));
                     let value = gadgets::conditional_select(cs, &condition, new, old)?;
                     self.set(*addr, Cell::Value(value))?;
                 }

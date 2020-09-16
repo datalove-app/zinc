@@ -1,10 +1,8 @@
-use crate::core::Cell;
+use crate::core::{Cell, RuntimeError};
 use crate::errors::MalformedBytecode;
-use crate::gadgets;
-use crate::gadgets::Scalar;
+use crate::gadgets::{self, Scalar};
 use crate::Engine;
-use crate::RuntimeError;
-use franklin_crypto::bellman::ConstraintSystem;
+use r1cs_core::ConstraintSystem;
 use std::fmt;
 
 #[derive(Debug)]
@@ -46,7 +44,7 @@ impl<E: Engine> EvaluationStack<E> {
 
     pub fn merge<CS>(&mut self, mut cs: CS, condition: &Scalar<E>) -> Result<(), RuntimeError>
     where
-        CS: ConstraintSystem<E>,
+        CS: ConstraintSystem<E::Fr>,
     {
         let else_case = self.stack.pop().ok_or_else(|| {
             RuntimeError::InternalError("Evaluation stack root frame missing".into())
@@ -63,7 +61,7 @@ impl<E: Engine> EvaluationStack<E> {
             match (t, e) {
                 (Cell::Value(tv), Cell::Value(ev)) => {
                     let merged = gadgets::conditional_select(
-                        cs.namespace(|| format!("merge {}", i)),
+                        cs.ns(|| format!("merge {}", i)),
                         condition,
                         &tv,
                         &ev,

@@ -2,17 +2,16 @@ use crate::core::{InternalVM, VMInstruction, VirtualMachine};
 use crate::gadgets::utils::{bigint_to_fr, fr_to_bigint};
 use crate::gadgets::{Scalar, ScalarTypeExpectation};
 use crate::{Engine, Result, RuntimeError};
-
-use franklin_crypto::bellman::ConstraintSystem;
 use num_bigint::BigInt;
 use num_bigint::Sign;
 use num_traits::ToPrimitive;
+use r1cs_core::ConstraintSystem;
 use zinc_bytecode::instructions::BitShiftLeft;
 
 impl<E, CS> VMInstruction<E, CS> for BitShiftLeft
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result {
         let right = vm.pop()?.value()?;
@@ -31,7 +30,7 @@ where
         let mut result_value = &left_value << right_value.to_usize().unwrap();
         result_value &= &BigInt::from_bytes_le(Sign::Plus, mask.as_slice());
 
-        let result_fr = bigint_to_fr::<E>(&result_value).ok_or(RuntimeError::ValueOverflow {
+        let result_fr = bigint_to_fr::<E::Fr>(&result_value).ok_or(RuntimeError::ValueOverflow {
             value: result_value,
             scalar_type,
         })?;

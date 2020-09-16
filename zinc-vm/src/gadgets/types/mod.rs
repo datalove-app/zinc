@@ -1,10 +1,8 @@
-use ff::Field;
-use franklin_crypto::bellman::ConstraintSystem;
-use franklin_crypto::circuit::expression::Expression;
-use num_bigint::BigInt;
-
-use crate::gadgets::{utils, IntegerType, Scalar, ScalarType, ScalarTypeExpectation};
 use crate::{Engine, Result, RuntimeError};
+use crate::gadgets::{utils, Expression, IntegerType, Scalar, ScalarType, ScalarTypeExpectation};
+use algebra::Zero;
+use num_bigint::BigInt;
+use r1cs_core::ConstraintSystem;
 
 pub fn conditional_type_check<E, CS>(
     cs: CS,
@@ -14,7 +12,7 @@ pub fn conditional_type_check<E, CS>(
 ) -> Result<Scalar<E>>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     condition.get_type().assert_type(ScalarType::Boolean)?;
 
@@ -25,7 +23,7 @@ where
         }
         ScalarType::Boolean => {
             // Check as u1 integer, then changet type to Boolean
-            let checked = conditional_type_check(cs, condition, scalar, IntegerType::U1.into())?;
+            let checked = conditional_type_check::<E, CS>(cs, condition, scalar, IntegerType::U1.into())?;
             Ok(checked.with_type_unchecked(scalar_type))
         }
         ScalarType::Integer(int_type) => {
@@ -42,7 +40,7 @@ fn conditional_int_type_check<E, CS>(
 ) -> Result<Scalar<E>>
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     // Throw runtime error if value is known.
     if let (Some(value_fr), Some(condition_fr)) = (scalar.get_value(), condition.get_value()) {
@@ -65,15 +63,15 @@ where
         Expression::u64::<CS>(0)
     } else {
         let offset = BigInt::from(1) << (int_type.bitlength - 1);
-        let offset_fr = utils::bigint_to_fr::<E>(&offset).expect("invalid integer type length");
+        let offset_fr = utils::bigint_to_fr::<E::Fr>(&offset).expect("invalid integer type length");
         Expression::constant::<CS>(offset_fr)
     };
     let zero = Expression::u64::<CS>(0);
 
     // If checking inside the false branch, use zero instead to avoid throwing an error.
-    let condition_bool = condition.to_boolean(cs.namespace(|| "to_boolean"))?;
+    let condition_bool = condition.to_boolean(cs.ns(|| "to_boolean"))?;
     let value_to_check = Expression::conditionally_select(
-        cs.namespace(|| "select value to check"),
+        cs.ns(|| "select value to check"),
         scalar_expr + offset_expr,
         zero,
         &condition_bool,
@@ -81,7 +79,7 @@ where
 
     // If value is overflowing, `into_bits_le_fixed` will be unsatisfiable.
     let _bits =
-        value_to_check.into_bits_le_fixed(cs.namespace(|| "into_bits"), int_type.bitlength)?;
+        value_to_check.into_bits_le_fixed(cs.ns(|| "into_bits"), int_type.bitlength)?;
 
     Ok(scalar.with_type_unchecked(int_type.into()))
 }

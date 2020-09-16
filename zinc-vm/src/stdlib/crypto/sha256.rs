@@ -2,8 +2,8 @@ use crate::core::EvaluationStack;
 use crate::gadgets::Scalar;
 use crate::stdlib::NativeFunction;
 use crate::{Engine, MalformedBytecode, Result};
-use bellman::ConstraintSystem;
-use franklin_crypto::circuit::sha256::sha256;
+use r1cs_core::ConstraintSystem;
+// use franklin_crypto::circuit::sha256::sha256;
 
 pub struct Sha256 {
     message_length: usize,
@@ -24,7 +24,7 @@ impl Sha256 {
 }
 
 impl<E: Engine> NativeFunction<E> for Sha256 {
-    fn execute<CS: ConstraintSystem<E>>(
+    fn execute<CS: ConstraintSystem<E::Fr>>(
         &self,
         mut cs: CS,
         stack: &mut EvaluationStack<E>,
@@ -34,18 +34,18 @@ impl<E: Engine> NativeFunction<E> for Sha256 {
             let bit = stack
                 .pop()?
                 .value()?
-                .to_boolean(cs.namespace(|| format!("bit {}", i)))?;
+                .to_boolean(cs.ns(|| format!("bit {}", i)))?;
 
             bits.push(bit);
         }
         bits.reverse();
 
-        let digest_bits = sha256(cs.namespace(|| "sha256"), &bits)?;
+        let digest_bits = sha256(cs.ns(|| "sha256"), &bits)?;
 
         assert_eq!(digest_bits.len(), 256);
 
         for bit in digest_bits {
-            let scalar = Scalar::from_boolean(cs.namespace(|| "from_boolean"), bit)?;
+            let scalar = Scalar::from_boolean(cs.ns(|| "from_boolean"), bit)?;
             stack.push(scalar.into())?;
         }
 

@@ -11,7 +11,7 @@ use crate::errors::MalformedBytecode;
 use crate::gadgets::{Gadgets, Scalar, ScalarType};
 use crate::Engine;
 use colored::Colorize;
-use franklin_crypto::bellman::ConstraintSystem;
+use r1cs_core::{ConstraintSystem, Namespace};
 use num_bigint::{BigInt, ToBigInt};
 use std::marker::PhantomData;
 use zinc_bytecode::data::types as object_types;
@@ -21,18 +21,18 @@ use zinc_bytecode::{dispatch_instruction, Instruction, InstructionInfo};
 pub trait VMInstruction<E, CS>: InstructionInfo
 where
     E: Engine,
-    CS: ConstraintSystem<E>,
+    CS: ConstraintSystem<E::Fr>,
 {
     fn execute(&self, vm: &mut VirtualMachine<E, CS>) -> Result<(), RuntimeError>;
 }
 
-struct CounterNamespace<E: Engine, CS: ConstraintSystem<E>> {
+struct CounterNamespace<E: Engine, CS: ConstraintSystem<E::Fr>> {
     cs: CS,
     counter: usize,
     _pd: PhantomData<E>,
 }
 
-impl<E: Engine, CS: ConstraintSystem<E>> CounterNamespace<E, CS> {
+impl<E: Engine, CS: ConstraintSystem<E::Fr>> CounterNamespace<E, CS> {
     fn new(cs: CS) -> Self {
         Self {
             cs,
@@ -41,14 +41,14 @@ impl<E: Engine, CS: ConstraintSystem<E>> CounterNamespace<E, CS> {
         }
     }
 
-    fn namespace(&mut self) -> bellman::Namespace<E, CS::Root> {
+    fn namespace(&mut self) -> Namespace<E::Fr, CS::Root> {
         let namespace = self.counter.to_string();
         self.counter += 1;
-        self.cs.namespace(|| namespace)
+        self.cs.ns(|| namespace)
     }
 }
 
-pub struct VirtualMachine<E: Engine, CS: ConstraintSystem<E>> {
+pub struct VirtualMachine<E: Engine, CS: ConstraintSystem<E::Fr>> {
     pub(crate) debugging: bool,
     state: State<E>,
     cs: CounterNamespace<E, CS>,
@@ -56,7 +56,7 @@ pub struct VirtualMachine<E: Engine, CS: ConstraintSystem<E>> {
     pub(crate) location: CodeLocation,
 }
 
-impl<E: Engine, CS: ConstraintSystem<E>> VirtualMachine<E, CS> {
+impl<E: Engine, CS: ConstraintSystem<E::Fr>> VirtualMachine<E, CS> {
     pub fn new(cs: CS, debugging: bool) -> Self {
         Self {
             debugging,
@@ -165,7 +165,7 @@ impl<E: Engine, CS: ConstraintSystem<E>> VirtualMachine<E, CS> {
         Ok(outputs_bigint)
     }
 
-    pub fn operations(&mut self) -> Gadgets<E, bellman::Namespace<E, CS::Root>> {
+    pub fn operations(&mut self) -> Gadgets<E, Namespace<E::Fr, CS::Root>> {
         Gadgets::new(self.cs.namespace())
     }
 
