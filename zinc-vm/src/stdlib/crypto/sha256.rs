@@ -7,7 +7,7 @@ use algebra::PrimeField;
 use r1cs_core::{ConstraintSystem, Namespace, SynthesisError};
 use r1cs_std::{
     alloc::AllocGadget,
-    bits::boolean::{AllocatedBit, Boolean},
+    boolean::{AllocatedBit, Boolean},
 };
 
 const ROUND_CONSTANTS: [u32; 64] = [
@@ -277,7 +277,7 @@ impl<E: Engine> NativeFunction<E> for Sha256 {
     }
 }
 
-trait Sha256Ext: Sized {
+pub(crate) trait Sha256Ext: Sized {
     fn maj<F, CS>(cs: CS, a: &Self, b: &Self, c: &Self) -> Result<Self, SynthesisError>
     where
         F: PrimeField,
@@ -486,64 +486,28 @@ impl Sha256Ext for Boolean {
     }
 }
 
-impl Sha256Ext for UInt32 {
-    /// Compute the `maj` value (a and b) xor (a and c) xor (b and c)
-    /// during SHA256.
-    fn maj<F, CS>(cs: CS, a: &Self, b: &Self, c: &Self) -> Result<Self, SynthesisError>
-    where
-        F: PrimeField,
-        CS: ConstraintSystem<F>,
-    {
-        Self::triop(
-            cs,
-            a,
-            b,
-            c,
-            |a, b, c| (a & b) ^ (a & c) ^ (b & c),
-            |cs, i, a, b, c| Boolean::maj(cs.ns(|| format!("maj {}", i)), a, b, c),
-        )
-    }
-
-    /// Compute the `ch` value `(a and b) xor ((not a) and c)`
-    /// during SHA256.
-    fn ch<F, CS>(cs: CS, a: &Self, b: &Self, c: &Self) -> Result<Self, SynthesisError>
-    where
-        F: PrimeField,
-        CS: ConstraintSystem<F>,
-    {
-        Self::triop(
-            cs,
-            a,
-            b,
-            c,
-            |a, b, c| (a & b) ^ ((!a) & c),
-            |cs, i, a, b, c| Boolean::ch(cs.ns(|| format!("ch {}", i)), a, b, c),
-        )
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use algebra::bls12_381::Bls12;
-    use r1cs_std::{bits::boolean::AllocatedBit, test_constraint_system::TestConstraintSystem};
-    use rand::{Rng, SeedableRng, XorShiftRng};
+    use algebra::bls12_381::Fr;
+    use r1cs_std::{boolean::AllocatedBit, test_constraint_system::TestConstraintSystem};
+    use rand::{Rng, SeedableRng};
+    use rand_xorshift::XorShiftRng;
 
     #[test]
     fn test_blank_hash() {
         let iv = Sha256::iv();
 
-        let mut cs = TestConstraintSystem::<Bls12>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
         let mut input_bits: Vec<_> = (0..512).map(|_| Boolean::Constant(false)).collect();
         input_bits[0] = Boolean::Constant(true);
         let out = Sha256::compress(&mut cs, &input_bits, &iv).unwrap();
-        let out_bits: Vec<_> = out.into_iter().flat_map(|e| e.into_bits_be()).collect();
+        let out_bits: Vec<_> = out.into_iter().flat_map(|e| e.to_bits_be()).collect();
 
         assert!(cs.is_satisfied());
         assert_eq!(cs.num_constraints(), 0);
 
-        let expected = hex!("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-
+        let expected = hex::decode("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
         let mut out = out_bits.into_iter();
         for b in expected.into_iter() {
             for i in (0..8).rev() {
@@ -558,22 +522,21 @@ mod test {
     fn test_full_block() {
         let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
 
-        let iv = Sha256::iv();
-
-        let mut cs = TestConstraintSystem::<Bls12>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
         let input_bits: Vec<_> = (0..512)
             .map(|i| {
                 Boolean::from(
                     AllocatedBit::alloc(
-                        cs.namespace(|| format!("input bit {}", i)),
-                        Some(rng.gen()),
+                        cs.ns(|| format!("input bit {}", i)),
+                        || Ok(rng.gen()),
                     )
                     .unwrap(),
                 )
             })
             .collect();
 
-        Sha256::compress(cs.namespace(|| "sha256"), &input_bits, &iv).unwrap();
+        let iv = Sha256::iv();
+        Sha256::compress(cs.ns(|| "sha256"), &input_bits, &iv).unwrap();
 
         assert!(cs.is_satisfied());
         assert_eq!(cs.num_constraints() - 512, 25840);
@@ -581,26 +544,26 @@ mod test {
 
     #[test]
     fn test_against_vectors() {
-        use sha2::{Digest, Sha256};
+        use sha2::{Digest, Sha256 as StdSha256};
 
         let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
 
         for input_len in (0..32).chain((32..256).filter(|a| a % 8 == 0)) {
-            let mut h = Sha256::new();
+            let mut h = StdSha256::new();
             let data: Vec<u8> = (0..input_len).map(|_| rng.gen()).collect();
             h.input(&data);
             let result = h.result();
             let hash_result = result.as_slice();
 
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
             let mut input_bits = vec![];
 
             for (byte_i, input_byte) in data.into_iter().enumerate() {
                 for bit_i in (0..8).rev() {
-                    let cs = cs.namespace(|| format!("input bit {} {}", byte_i, bit_i));
+                    let cs = cs.ns(|| format!("input bit {} {}", byte_i, bit_i));
 
                     input_bits.push(
-                        AllocatedBit::alloc(cs, Some((input_byte >> bit_i) & 1u8 == 1u8))
+                        AllocatedBit::alloc(cs, || Ok((input_byte >> bit_i) & 1u8 == 1u8))
                             .unwrap()
                             .into(),
                     );
@@ -608,7 +571,6 @@ mod test {
             }
 
             let r = Sha256::run(&mut cs, &input_bits).unwrap();
-
             assert!(cs.is_satisfied());
 
             let mut s = hash_result

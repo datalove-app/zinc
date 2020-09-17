@@ -4,7 +4,7 @@ use algebra::{BigInteger, BitIterator, Field, FpParameters, One, PrimeField, Zer
 use r1cs_core::{ConstraintSystem, LinearCombination, Namespace, SynthesisError};
 use r1cs_std::{
     alloc::AllocGadget,
-    bits::boolean::{self, AllocatedBit, Boolean},
+    boolean::{AllocatedBit, Boolean},
     Assignment,
 };
 use std::{
@@ -70,7 +70,7 @@ impl<E: Engine> Expression<E> {
         mut cs: CS,
         a: EX1,
         b: EX2,
-    ) -> Result<boolean::AllocatedBit, SynthesisError>
+    ) -> Result<AllocatedBit, SynthesisError>
     where
         E: Engine,
         CS: ConstraintSystem<E::Fr>,
@@ -86,7 +86,7 @@ impl<E: Engine> Expression<E> {
             _ => None,
         };
 
-        let r = boolean::AllocatedBit::alloc(cs.ns(|| "r"), || {
+        let r = AllocatedBit::alloc(cs.ns(|| "r"), || {
             r_value.ok_or(SynthesisError::AssignmentMissing)
         })?;
 
@@ -677,20 +677,22 @@ pub fn field_into_allocated_bits_le_fixed<CS: ConstraintSystem<F>, F: PrimeField
 
 #[cfg(test)]
 mod test {
-    use super::Expression;
-    use super::{AllocatedBit, AllocatedNum, Boolean, Num};
-    use bellman::pairing::bls12_381::{Bls12, Fr};
-    use bellman::pairing::ff::{BitIterator, Field, PrimeField};
-    use bellman::ConstraintSystem;
-    use circuit::test::*;
-    use rand::{Rand, Rng, SeedableRng, XorShiftRng};
+    use super::{AllocatedBit, AllocatedNum, Boolean, Expression, Num};
+    use algebra::{bls12_381::Fr, BitIterator, Field, FpParameters, One, PrimeField, UniformRand};
+    use r1cs_core::ConstraintSystem;
+    use r1cs_std::{alloc::AllocGadget, test_constraint_system::TestConstraintSystem};
+    use rand::{Rng, SeedableRng};
+    use rand_xorshift::XorShiftRng;
+    use std::{ops::SubAssign, str::FromStr};
+
     #[test]
     fn test_lc_equals() {
-        let mut cs = TestConstraintSystem::<Bls12>::new();
-        let bit = AllocatedBit::alloc(cs.ns(|| "true"), Some(true)).unwrap();
+        let mut cs = TestConstraintSystem::<Fr>::new();
+
+        let bit = AllocatedBit::alloc(cs.ns(|| "true"), || Ok(true)).unwrap();
         let one = AllocatedNum::alloc(cs.ns(|| "one"), || Ok(Fr::one())).unwrap();
         let b_true_const = Boolean::constant(true);
-        let one_const = Expression::constant::<TestConstraintSystem<Bls12>>(Fr::one());
+        let one_const = Expression::constant::<TestConstraintSystem<Fr>>(Fr::one());
 
         let a = AllocatedNum::alloc(cs.ns(|| "a"), || Ok(Fr::from_str("10").unwrap())).unwrap();
         let b = AllocatedNum::alloc(cs.ns(|| "b"), || Ok(Fr::from_str("12").unwrap())).unwrap();
@@ -707,8 +709,8 @@ mod test {
         let eq3 = Expression::equals(cs.ns(|| "eq one bit_true"), &bit, &one).unwrap();
         let eq4 = Expression::equals(
             cs.ns(|| "eq one_const b_true_const"),
-            Expression::boolean::<TestConstraintSystem<Bls12>>(b_true_const),
-            Expression::constant::<TestConstraintSystem<Bls12>>(Fr::one()),
+            Expression::boolean::<TestConstraintSystem<Fr>>(b_true_const),
+            Expression::constant::<TestConstraintSystem<Fr>>(Fr::one()),
         )
         .unwrap();
         let err = cs.which_is_unsatisfied();
@@ -728,9 +730,12 @@ mod test {
 
     #[test]
     fn test_expr_conditional_reversal() {
-        let mut rng = XorShiftRng::from_seed([0x3dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x3d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
         {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a = AllocatedNum::alloc(cs.ns(|| "a"), || Ok(rng.gen())).unwrap();
             let b = AllocatedNum::alloc(cs.ns(|| "b"), || Ok(rng.gen())).unwrap();
@@ -742,8 +747,8 @@ mod test {
             assert_eq!(a.get_value().unwrap(), c.get_value().unwrap());
             assert_eq!(b.get_value().unwrap(), d.get_value().unwrap());
 
-            let a = Expression::u64::<TestConstraintSystem<Bls12>>(19);
-            let b = Expression::u64::<TestConstraintSystem<Bls12>>(15);
+            let a = Expression::u64::<TestConstraintSystem<Fr>>(19);
+            let b = Expression::u64::<TestConstraintSystem<Fr>>(15);
             let condition = Boolean::constant(false);
             let (c, d) = Expression::conditionally_reverse(
                 cs.ns(|| "reverse2"),
@@ -760,7 +765,7 @@ mod test {
         }
 
         {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a = AllocatedNum::alloc(cs.ns(|| "a"), || Ok(rng.gen())).unwrap();
             let b = AllocatedNum::alloc(cs.ns(|| "b"), || Ok(rng.gen())).unwrap();
@@ -776,9 +781,12 @@ mod test {
 
     #[test]
     fn test_expr_conditional_select() {
-        let mut rng = XorShiftRng::from_seed([0x3dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x3d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
         {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a = AllocatedNum::alloc(cs.ns(|| "a"), || Ok(rng.gen())).unwrap();
             let b = AllocatedNum::alloc(cs.ns(|| "b"), || Ok(rng.gen())).unwrap();
@@ -801,7 +809,7 @@ mod test {
 
     #[test]
     fn select_if_equals() {
-        let mut cs = TestConstraintSystem::<Bls12>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
 
         let a = AllocatedNum::alloc(cs.ns(|| "a"), || Ok(Fr::from_str("0").unwrap())).unwrap();
         let b = AllocatedNum::alloc(cs.ns(|| "b"), || Ok(Fr::from_str("1").unwrap())).unwrap();
@@ -823,7 +831,7 @@ mod test {
         let mut negone = Fr::one();
         negone.negate();
 
-        let mut cs = TestConstraintSystem::<Bls12>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
 
         let n = AllocatedNum::alloc(&mut cs, || Ok(negone)).unwrap();
         let n = Expression::from(&n);
@@ -843,11 +851,14 @@ mod test {
 
     #[test]
     fn test_into_bits() {
-        let mut rng = XorShiftRng::from_seed([0x3dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x3d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
 
         for i in 0..200 {
             let r = Fr::rand(&mut rng);
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let n = AllocatedNum::alloc(&mut cs, || Ok(r)).unwrap();
             let n = Expression::from(&n);
@@ -876,7 +887,7 @@ mod test {
             cs.set("num", r);
             assert!(cs.is_satisfied());
 
-            for i in 0..Fr::NUM_BITS {
+            for i in 0..<Fr as PrimeField>::Params::MODULUS_BITS {
                 let name = format!("bit {}/boolean", i);
                 let cur = cs.get(&name);
                 let mut tmp = Fr::one();
@@ -890,8 +901,8 @@ mod test {
     }
     #[test]
     fn test_into_bits_fixed() {
-        let mut cs = TestConstraintSystem::<Bls12>::new();
-        let a = Expression::u64::<TestConstraintSystem<Bls12>>(0b1011);
+        let mut cs = TestConstraintSystem::<Fr>::new();
+        let a = Expression::u64::<TestConstraintSystem<Fr>>(0b1011);
         let bits = a.into_bits_le_fixed(&mut cs, 4).unwrap();
         assert!(cs.is_satisfied());
         assert_eq!(bits[0].get_value().unwrap(), true);

@@ -24,8 +24,7 @@ mod test {
     use super::*;
     use crate::gadgets::utils::fr_to_bigint;
     use crate::instructions::testing_utils::{TestingError, VMTestRunner};
-    use ff::Field;
-    use pairing::bn256::Fr;
+    use algebra::{bn254::Fr, One, Zero};
     use zinc_bytecode::scalar::{IntegerType, ScalarType};
     use zinc_bytecode::*;
 

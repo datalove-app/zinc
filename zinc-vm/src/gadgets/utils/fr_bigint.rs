@@ -53,8 +53,9 @@ pub fn bigint_to_fr<Fr: PrimeField>(bigint: &BigInt) -> Option<Fr> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bellman::pairing::bn256::{Bn256, Fr};
+    use algebra::bn254::Fr;
     use num_traits::ToPrimitive;
+    use std::str::FromStr;
 
     #[test]
     fn test_fr_to_bigint() {
@@ -73,7 +74,7 @@ mod test {
 
         for &v in values.iter() {
             let bigint = BigInt::from(v);
-            let fr = bigint_to_fr::<Bn256>(&bigint);
+            let fr = bigint_to_fr::<Fr>(&bigint);
             assert_eq!(fr, Fr::from_str(&v.to_string()));
         }
     }
@@ -84,7 +85,7 @@ mod test {
 
         for &v in values.iter() {
             let expected = BigInt::from(v);
-            let fr = bigint_to_fr::<Bn256>(&expected).expect("bigint_to_fr");
+            let fr = bigint_to_fr::<Fr>(&expected).expect("bigint_to_fr");
             let actual = fr_to_bigint(&fr, true);
             assert_eq!(actual, expected);
         }

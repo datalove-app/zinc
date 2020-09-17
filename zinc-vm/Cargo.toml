@@ -13,32 +13,30 @@ name = "zvm"
 path = "src/cli/zvm.rs"
 
 [dependencies]
-log = "0.4"
-env_logger = "0.7"
-clap = "2.33.0"
-rand = "0.7.3"
 colored = "1.9.0"
+env_logger = "0.7"
+failure = "0.1"
+hex = "0.4.0"
+log = "0.4"
+num-bigint = "0.2.3"
+num-integer = "0.1.41"
+num-traits = "0.2.8"
+rand = "0.7.3"
 serde_json = "1.0.44"
 structopt = "0.3.8"
-hex = "0.4.0"
-failure = "0.1"
 
-algebra = { path = "../../zexe/algebra" , features = ["bn254", "derive"] }
-groth16 = { path = "../../zexe/groth16"  }
-r1cs-core = { path = "../../zexe/r1cs-core"  }
-r1cs-std = { path = "../../zexe/r1cs-std"  }
-
-num-bigint = "0.2.3"
-num-traits = "0.2.8"
-num-integer = "0.1.41"
+algebra = { path = "../../zexe/algebra" , features = ["bls12_381", "bn254", "derive"] }
+groth16 = { path = "../../zexe/groth16" }
+r1cs-core = { path = "../../zexe/r1cs-core" }
+r1cs-std = { path = "../../zexe/r1cs-std" }
 
 zinc-bytecode = { path = "../zinc-bytecode" }
 zinc-utils = { path = "../zinc-utils" }
 
-[build-dependencies]
-clap = "2.33.0"
-num-bigint = "0.2.3"
+[dev-dependencies]
+rand_xorshift = "0.2.0"
+sha2 = "0.9.1"
 
 [features]
-full = ['r1cs-std/full']
-parallel = ['r1cs-std/parallel']
+full = ["algebra/full", "r1cs-std/full"]
+parallel = ["algebra/parallel", "groth16/parallel", "r1cs-std/parallel"]

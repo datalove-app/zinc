@@ -1,6 +1,6 @@
 use crate::core::{InternalVM, RuntimeError, VirtualMachine};
 use crate::Engine;
-// use bellman::pairing::bn256::Bn256;
+use algebra::bn254::Bn254;
 use colored::Colorize;
 use failure::Fail;
 use num_bigint::{BigInt, ToBigInt};
@@ -9,7 +9,7 @@ use r1cs_std::test_constraint_system::TestConstraintSystem;
 use zinc_bytecode::data::types::DataType;
 use zinc_bytecode::{Call, Instruction, InstructionInfo, Program};
 
-type TestVirtualMachine = VirtualMachine<Bn256, TestConstraintSystem<Bn256>>;
+type TestVirtualMachine = VirtualMachine<Bn254, TestConstraintSystem<<Bn254 as Engine>::Fr>>;
 
 fn new_test_constrained_vm() -> TestVirtualMachine {
     let cs = TestConstraintSystem::new();

@@ -4,7 +4,7 @@ use algebra::{BigInteger, BitIterator, Field, FpParameters, One, PrimeField, Zer
 use r1cs_core::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
 use r1cs_std::prelude::{AllocGadget, CondSelectGadget, ConditionalEqGadget, EqGadget};
 use r1cs_std::{
-    bits::boolean::{AllocatedBit, Boolean},
+    boolean::{AllocatedBit, Boolean},
     Assignment,
 };
 use std::ops::{Add, AddAssign, MulAssign, Sub, SubAssign};
@@ -1349,25 +1349,25 @@ impl<E: Engine> Sub<&Num<E>> for Num<E> {
 #[cfg(test)]
 mod test {
     use super::AllocatedNum;
-    use crate::{
-        circuits::{Circuit, ConstraintSystem, SynthesisError},
-        dev::is_satisfied,
-        fields::Fp,
-        Basic,
-    };
+    use r1cs_core::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+
+    // use crate::{
+    //     circuits::{Circuit, ConstraintSystem, SynthesisError},
+    //     dev::is_satisfied,
+    //     fields::Fp,
+    //     Basic,
+    // };
 
     #[test]
     fn test_allocated_num() {
         #[derive(Default)]
         struct TestCircuit;
-
-        impl Circuit<Fp> for TestCircuit {
-            fn synthesize<CS: ConstraintSystem<Fp>>(
+        impl ConstraintSynthesizer<Fp> for TestCircuit {
+            fn generate_constraints<CS: ConstraintSystem<Fp>>(
                 &self,
                 cs: &mut CS,
             ) -> Result<(), SynthesisError> {
                 let _ = AllocatedNum::alloc(cs, || Ok(Fp::one()))?;
-
                 Ok(())
             }
         }
@@ -1382,9 +1382,8 @@ mod test {
     fn test_num_alloc_and_square() {
         #[derive(Default)]
         struct TestCircuit;
-
-        impl Circuit<Fp> for TestCircuit {
-            fn synthesize<CS: ConstraintSystem<Fp>>(
+        impl ConstraintSynthesizer<Fp> for TestCircuit {
+            fn generate_constraints<CS: ConstraintSystem<Fp>>(
                 &self,
                 cs: &mut CS,
             ) -> Result<(), SynthesisError> {
@@ -1407,9 +1406,8 @@ mod test {
     fn test_num_multiplication() {
         #[derive(Default)]
         struct TestCircuit;
-
-        impl Circuit<Fp> for TestCircuit {
-            fn synthesize<CS: ConstraintSystem<Fp>>(
+        impl ConstraintSynthesizer<Fp> for TestCircuit {
+            fn generate_constraints<CS: ConstraintSystem<Fp>>(
                 &self,
                 cs: &mut CS,
             ) -> Result<(), SynthesisError> {

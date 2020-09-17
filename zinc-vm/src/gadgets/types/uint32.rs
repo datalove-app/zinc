@@ -1,9 +1,10 @@
 use crate::gadgets::MultiEq;
+use crate::stdlib::crypto::Sha256Ext;
 use algebra::{FpParameters, PrimeField};
 use r1cs_core::{ConstraintSystem, LinearCombination, SynthesisError};
 use r1cs_std::{
     alloc::AllocGadget,
-    bits::boolean::{AllocatedBit, Boolean},
+    boolean::{AllocatedBit, Boolean},
 };
 
 /// Represents an interpretation of 32 `Boolean` objects as an
@@ -329,19 +330,58 @@ impl UInt32 {
     }
 }
 
+impl Sha256Ext for UInt32 {
+    /// Compute the `maj` value (a and b) xor (a and c) xor (b and c)
+    /// during SHA256.
+    fn maj<F, CS>(cs: CS, a: &Self, b: &Self, c: &Self) -> Result<Self, SynthesisError>
+    where
+        F: PrimeField,
+        CS: ConstraintSystem<F>,
+    {
+        Self::triop(
+            cs,
+            a,
+            b,
+            c,
+            |a, b, c| (a & b) ^ (a & c) ^ (b & c),
+            |cs, i, a, b, c| Boolean::maj(cs.ns(|| format!("maj {}", i)), a, b, c),
+        )
+    }
+
+    /// Compute the `ch` value `(a and b) xor ((not a) and c)`
+    /// during SHA256.
+    fn ch<F, CS>(cs: CS, a: &Self, b: &Self, c: &Self) -> Result<Self, SynthesisError>
+    where
+        F: PrimeField,
+        CS: ConstraintSystem<F>,
+    {
+        Self::triop(
+            cs,
+            a,
+            b,
+            c,
+            |a, b, c| (a & b) ^ ((!a) & c),
+            |cs, i, a, b, c| Boolean::ch(cs.ns(|| format!("ch {}", i)), a, b, c),
+        )
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::UInt32;
+    use super::*;
     use crate::gadgets::MultiEq;
-    use ::circuit::test::*;
-    use algebra::{bls12_381::Bls12, Field};
+    use algebra::{bls12_381::Fr, Field, Zero};
     use r1cs_core::ConstraintSystem;
-    use r1cs_std::prelude::Boolean;
-    use rand::{Rng, SeedableRng, XorShiftRng};
+    use r1cs_std::{prelude::Boolean, test_constraint_system::TestConstraintSystem};
+    use rand::{Rng, SeedableRng};
+    use rand_xorshift::XorShiftRng;
 
     #[test]
     fn test_uint32_from_bits_be() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0653]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x53,
+        ]);
 
         for _ in 0..1000 {
             let mut v = (0..32)
@@ -349,7 +389,6 @@ mod test {
                 .collect::<Vec<_>>();
 
             let b = UInt32::from_bits_be(&v);
-
             for (i, bit) in b.bits.iter().enumerate() {
                 match bit {
                     &Boolean::Constant(bit) => {
@@ -359,8 +398,7 @@ mod test {
                 }
             }
 
-            let expected_to_be_same = b.into_bits_be();
-
+            let expected_to_be_same = b.to_bits_be();
             for x in v.iter().zip(expected_to_be_same.iter()) {
                 match x {
                     (&Boolean::Constant(true), &Boolean::Constant(true)) => {}
@@ -373,15 +411,17 @@ mod test {
 
     #[test]
     fn test_uint32_from_bits() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0653]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x53,
+        ]);
 
         for _ in 0..1000 {
             let mut v = (0..32)
                 .map(|_| Boolean::constant(rng.gen()))
                 .collect::<Vec<_>>();
 
-            let b = UInt32::from_bits(&v);
-
+            let b = UInt32::from_bits_be(&v);
             for (i, bit) in b.bits.iter().enumerate() {
                 match bit {
                     &Boolean::Constant(bit) => {
@@ -391,8 +431,7 @@ mod test {
                 }
             }
 
-            let expected_to_be_same = b.into_bits();
-
+            let expected_to_be_same = b.to_bits_be();
             for x in v.iter().zip(expected_to_be_same.iter()) {
                 match x {
                     (&Boolean::Constant(true), &Boolean::Constant(true)) => {}
@@ -405,10 +444,13 @@ mod test {
 
     #[test]
     fn test_uint32_xor() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0653]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x53,
+        ]);
 
         for _ in 0..1000 {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a: u32 = rng.gen();
             let b: u32 = rng.gen();
@@ -447,10 +489,13 @@ mod test {
 
     #[test]
     fn test_uint32_addmany_constants() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
 
         for _ in 0..1000 {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a: u32 = rng.gen();
             let b: u32 = rng.gen();
@@ -463,7 +508,7 @@ mod test {
             let mut expected = a.wrapping_add(b).wrapping_add(c);
 
             let r = {
-                let mut cs = MultiEq::new(&mut cs);
+                let mut cs = MultiEq::from(&mut cs);
                 let r = UInt32::addmany(cs.ns(|| "addition"), &[a_bit, b_bit, c_bit]).unwrap();
                 r
             };
@@ -486,10 +531,13 @@ mod test {
 
     #[test]
     fn test_uint32_addmany() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
 
         for _ in 0..1000 {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a: u32 = rng.gen();
             let b: u32 = rng.gen();
@@ -505,13 +553,11 @@ mod test {
 
             let r = a_bit.xor(cs.ns(|| "xor"), &b_bit).unwrap();
             let r = {
-                let mut cs = MultiEq::new(&mut cs);
-                let r = UInt32::addmany(cs.ns(|| "addition"), &[r, c_bit, d_bit]).unwrap();
-                r
+                let mut cs = MultiEq::from(&mut cs);
+                UInt32::addmany(cs.ns(|| "addition"), &[r, c_bit, d_bit]).unwrap()
             };
 
             assert!(cs.is_satisfied());
-
             assert!(r.value == Some(expected));
 
             for b in r.bits.iter() {
@@ -541,7 +587,10 @@ mod test {
 
     #[test]
     fn test_uint32_rotr() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
 
         let mut num = rng.gen();
 
@@ -571,7 +620,10 @@ mod test {
 
     #[test]
     fn test_uint32_shr() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0654]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x54,
+        ]);
 
         for _ in 0..50 {
             for i in 0..60 {
@@ -591,10 +643,13 @@ mod test {
 
     #[test]
     fn test_uint32_sha256_maj() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0653]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x53,
+        ]);
 
         for _ in 0..1000 {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a: u32 = rng.gen();
             let b: u32 = rng.gen();
@@ -606,10 +661,9 @@ mod test {
             let b_bit = UInt32::constant(b);
             let c_bit = UInt32::alloc(cs.ns(|| "c_bit"), Some(c)).unwrap();
 
-            let r = UInt32::sha256_maj(&mut cs, &a_bit, &b_bit, &c_bit).unwrap();
+            let r = UInt32::maj(&mut cs, &a_bit, &b_bit, &c_bit).unwrap();
 
             assert!(cs.is_satisfied());
-
             assert!(r.value == Some(expected));
 
             for b in r.bits.iter() {
@@ -632,10 +686,13 @@ mod test {
 
     #[test]
     fn test_uint32_sha256_ch() {
-        let mut rng = XorShiftRng::from_seed([0x5dbe6259, 0x8d313d76, 0x3237db17, 0xe5bc0653]);
+        let mut rng = XorShiftRng::from_seed([
+            0x5d, 0xbe, 0x62, 0x59, 0x8d, 0x31, 0x3d, 0x76,
+            0x32, 0x37, 0xdb, 0x17, 0xe5, 0xbc, 0x06, 0x53,
+        ]);
 
         for _ in 0..1000 {
-            let mut cs = TestConstraintSystem::<Bls12>::new();
+            let mut cs = TestConstraintSystem::<Fr>::new();
 
             let a: u32 = rng.gen();
             let b: u32 = rng.gen();
@@ -647,10 +704,9 @@ mod test {
             let b_bit = UInt32::constant(b);
             let c_bit = UInt32::alloc(cs.ns(|| "c_bit"), Some(c)).unwrap();
 
-            let r = UInt32::sha256_ch(&mut cs, &a_bit, &b_bit, &c_bit).unwrap();
+            let r = UInt32::ch(&mut cs, &a_bit, &b_bit, &c_bit).unwrap();
 
             assert!(cs.is_satisfied());
-
             assert!(r.value == Some(expected));
 
             for b in r.bits.iter() {

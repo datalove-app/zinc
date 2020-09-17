@@ -9,7 +9,7 @@ use num_traits::ToPrimitive;
 use r1cs_core::{ConstraintSystem, LinearCombination, SynthesisError, Variable};
 use r1cs_std::{
     alloc::AllocGadget,
-    bits::boolean::{AllocatedBit, Boolean},
+    boolean::{AllocatedBit, Boolean},
 };
 use std::{fmt, str::FromStr};
 

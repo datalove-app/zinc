@@ -4,7 +4,7 @@ use crate::stdlib::NativeFunction;
 use crate::{Engine, Result, RuntimeError};
 use num_bigint::BigInt;
 use r1cs_core::ConstraintSystem;
-use r1cs_std::bits::boolean::Boolean;
+use r1cs_std::boolean::Boolean;
 
 pub struct ToBits;
 

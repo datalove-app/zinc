@@ -1,7 +1,6 @@
 use crate::core::{Cell, RuntimeError};
 use crate::errors::MalformedBytecode;
-use crate::gadgets::{Gadgets, Scalar};
-use crate::{gadgets, Engine};
+use crate::{gadgets::{self, Gadgets, Scalar}, Engine};
 use r1cs_core::ConstraintSystem;
 use std::{collections::BTreeMap, fmt};
 
@@ -190,15 +189,28 @@ impl<E: Engine> DataStack<E> {
     }
 }
 
+impl<E: Engine> fmt::Display for DataStack<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Data Stack:")?;
+
+        for (address, opt_cell) in self.memory.iter().enumerate() {
+            match opt_cell {
+                None => writeln!(f, "\t{:4}: <empty>", address)?,
+                Some(Cell::Value(value)) => writeln!(f, "\t{:4}: {}", address, value)?,
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use num_bigint::{BigInt, ToBigInt};
-    use pairing::bn256::Bn256;
-
-    use crate::gadgets::{Gadgets, ScalarType};
-
     use super::*;
-    use franklin_crypto::circuit::test::TestConstraintSystem;
+    use crate::gadgets::{Gadgets, ScalarType};
+    use num_bigint::{BigInt, ToBigInt};
+    use r1cs_std::test_constraint_system::TestConstraintSystem;
+    use algebra::bn254::{Bn254, Fr};
 
     fn assert_cell_eq<E: Engine>(cell: Cell<E>, value: BigInt) {
         let Cell::Value(v) = cell;
@@ -207,8 +219,8 @@ mod tests {
 
     #[test]
     fn test_get_set() {
-        let mut ds = DataStack::new();
-        let mut cs = TestConstraintSystem::<Bn256>::new();
+        let mut ds = DataStack::<Bn254>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
         let op = Gadgets::new(&mut cs);
         let value = op.constant_bigint(&42.into(), ScalarType::Field).unwrap();
         ds.set(4, Cell::Value(value)).unwrap();
@@ -218,8 +230,8 @@ mod tests {
 
     #[test]
     fn test_fork_merge_true() {
-        let mut ds = DataStack::new();
-        let mut cs = TestConstraintSystem::<Bn256>::new();
+        let mut ds = DataStack::<Bn254>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
         let mut ops = Gadgets::new(&mut cs);
         let value = ops.constant_bigint(&42.into(), ScalarType::Field).unwrap();
         ds.set(4, Cell::Value(value)).unwrap();
@@ -239,8 +251,8 @@ mod tests {
 
     #[test]
     fn test_fork_merge_false() {
-        let mut ds = DataStack::new();
-        let mut cs = TestConstraintSystem::<Bn256>::new();
+        let mut ds = DataStack::<Bn254>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
         let mut ops = Gadgets::new(&mut cs);
         let value = ops.constant_bigint(&42.into(), ScalarType::Field).unwrap();
         ds.set(4, Cell::Value(value)).unwrap();
@@ -256,20 +268,5 @@ mod tests {
         let condition = Scalar::new_constant_bool(false);
         ds.merge(condition, &mut ops).unwrap();
         assert_cell_eq(ds.get(4).unwrap(), 42.into());
-    }
-}
-
-impl<E: Engine> fmt::Display for DataStack<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Data Stack:")?;
-
-        for (address, opt_cell) in self.memory.iter().enumerate() {
-            match opt_cell {
-                None => writeln!(f, "\t{:4}: <empty>", address)?,
-                Some(Cell::Value(value)) => writeln!(f, "\t{:4}: {}", address, value)?,
-            }
-        }
-
-        Ok(())
     }
 }

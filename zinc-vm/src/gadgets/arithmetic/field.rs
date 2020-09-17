@@ -40,21 +40,18 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use algebra::Field;
-    use bellman::ConstraintSystem;
-    use pairing::bn256::{Bn256, Fr};
-    use r1cs_std::test_constraint_system::TestConstraintSystem;
-
     use crate::gadgets::Scalar;
+    use algebra::{bn254::{Bn254, Fr}, Field, One};
+    use r1cs_core::ConstraintSystem;
+    use r1cs_std::test_constraint_system::TestConstraintSystem;
     use zinc_bytecode::scalar::ScalarType;
 
     #[test]
     fn test_inverse() {
-        let mut cs = TestConstraintSystem::<Bn256>::new();
+        let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let zero = Scalar::new_constant_int(0, ScalarType::Field);
-        let one = Scalar::new_constant_int(1, ScalarType::Field);
+        let zero = Scalar::<Bn254>::new_constant_int(0, ScalarType::Field);
+        let one = Scalar::<Bn254>::new_constant_int(1, ScalarType::Field);
 
         assert!(inverse(cs.ns(|| "zero"), &zero).is_err(), "zero");
         assert_eq!(
