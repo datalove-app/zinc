@@ -1,8 +1,10 @@
-use super::{ProvingSystem, VerificationError};
+use super::{Parameters, Proof, ProvingSystem, VerificationError, VerifyingKey};
 use crate::Engine;
+use algebra::ToBytes;
 use groth16;
 use r1cs_core::{ConstraintSynthesizer, SynthesisError};
 use rand::Rng;
+use std::io;
 
 pub struct Groth16;
 
@@ -45,5 +47,45 @@ impl<E: Engine> ProvingSystem<E> for Groth16 {
         public_inputs: &[E::Fr],
     ) -> Result<bool, VerificationError> {
         groth16::verify_proof(pvk, proof, public_inputs).map_err(VerificationError::SynthesisError)
+    }
+}
+
+impl<E: Engine> Parameters for groth16::Parameters<E> {
+    type VerifyingKey = groth16::VerifyingKey<E>;
+
+    fn read<R: io::Read>(reader: R) -> io::Result<Self> {
+        unimplemented!()
+    }
+
+    fn write<W: io::Write>(&self, writer: W) -> io::Result<()> {
+        unimplemented!()
+    }
+
+    fn read_verifying_key<R: io::Read>(reader: R) -> io::Result<Self::VerifyingKey> {
+        unimplemented!()
+    }
+
+    fn write_verifying_key<W: io::Write>(&self, writer: W) -> io::Result<()> {
+        unimplemented!()
+    }
+}
+
+impl<E: Engine> Proof for groth16::Proof<E> {
+    fn read<R: io::Read>(reader: R) -> io::Result<Self> {
+        unimplemented!()
+    }
+
+    fn write<W: io::Write>(&self, writer: W) -> io::Result<()> {
+        unimplemented!()
+    }
+}
+
+impl<E: Engine> VerifyingKey for groth16::VerifyingKey<E> {
+    fn read<R: io::Read>(reader: R) -> io::Result<Self> {
+        unimplemented!()
+    }
+
+    fn write<W: io::Write>(&self, writer: W) -> io::Result<()> {
+        unimplemented!()
     }
 }

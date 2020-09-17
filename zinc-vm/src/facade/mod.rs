@@ -1,5 +1,5 @@
-mod proving_systems;
-pub use proving_systems::*;
+pub mod proving_systems;
+use proving_systems::*;
 
 use crate::constraint_systems::{DebugConstraintSystem, DuplicateRemovingCS};
 use crate::core::VirtualMachine;

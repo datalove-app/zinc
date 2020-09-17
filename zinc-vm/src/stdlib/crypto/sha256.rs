@@ -373,6 +373,7 @@ impl Sha256Ext for Boolean {
         // (2bc - b - c) * (a) = bc - maj
 
         let bc = Self::and(cs.ns(|| "b and c"), b, c)?;
+        // FIXME get rid of this extra allocation
         let maj_bit = AllocatedBit::alloc(cs.ns(|| "maj"), || {
             maj_value.ok_or(SynthesisError::AssignmentMissing)
         })?;
@@ -470,6 +471,7 @@ impl Sha256Ext for Boolean {
 
         // a(b - c) = ch - c
 
+        // FIXME get rid of this extra allocation
         let ch_bit = AllocatedBit::alloc(cs.ns(|| "ch"), || {
             ch_value.ok_or(SynthesisError::AssignmentMissing)
         })?;

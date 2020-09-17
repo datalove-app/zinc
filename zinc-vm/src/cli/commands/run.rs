@@ -1,5 +1,5 @@
 use crate::{Error, IoToError};
-use pairing::bn256::Bn256;
+use algebra::Bn254;
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -17,6 +17,14 @@ pub struct RunCommand {
 
     #[structopt(short = "o", long = "output", help = "Program's output file")]
     pub output_path: PathBuf,
+
+    #[structopt(
+        short = "e",
+        long = "engine",
+        help = "Pairing engine",
+        default_value = "bn254"
+    )]
+    pub engine: String,
 }
 
 impl RunCommand {
@@ -30,7 +38,7 @@ impl RunCommand {
         let json = serde_json::from_str(&input_text)?;
         let input = Value::from_typed_json(&json, &program.input)?;
 
-        let output = zinc_vm::run::<Bn256>(&program, &input)?;
+        let output = self.inner(&program, &input)?;
 
         let output_json = serde_json::to_string_pretty(&output.to_json())? + "\n";
         fs::write(&self.output_path, &output_json)
@@ -39,5 +47,12 @@ impl RunCommand {
         print!("{}", output_json);
 
         Ok(())
+    }
+
+    fn inner(&self, program: &Program, input: &Value) -> Result<Value, Error> {
+        match self.engine.as_str() {
+            "bn254" => Ok(zinc_vm::run::<Bn254>(program, input)?),
+            _ => todo!(),
+        }
     }
 }

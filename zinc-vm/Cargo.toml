@@ -23,7 +23,7 @@ structopt = "0.3.8"
 hex = "0.4.0"
 failure = "0.1"
 
-algebra = { path = "../../zexe/algebra" , features = ["derive"] }
+algebra = { path = "../../zexe/algebra" , features = ["bn254", "derive"] }
 groth16 = { path = "../../zexe/groth16"  }
 r1cs-core = { path = "../../zexe/r1cs-core"  }
 r1cs-std = { path = "../../zexe/r1cs-std"  }
